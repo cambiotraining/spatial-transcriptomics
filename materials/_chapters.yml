@@ -1,0 +1,5 @@
+book:
+  chapters:
+    - part: "Section title"
+      chapters:
+        - materials/00-template.md

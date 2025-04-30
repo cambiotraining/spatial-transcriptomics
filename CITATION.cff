@@ -1,0 +1,30 @@
+# Note: we use the author alias to record author contributions
+# This is a known limitation of CFF files: https://github.com/citation-file-format/citation-file-format/issues/112
+# Suggested author roles are given here: https://cambiotraining.github.io/quarto-course-template/materials/03-authorship.html#author-roles
+
+cff-version: 1.2.0
+title: "Spatial transcriptomics analysis"
+message: >-
+  You may cite these materials using the metadata in this
+  file. Please cite our materials if you publish materials
+  derived from these, run a workshop using them, or use
+  the information in your own work.
+type: dataset
+authors:
+  - given-names: Adam 
+    family-names: Reid
+    affiliation: Gurdon Institute
+    website: https://www.gurdon.cam.ac.uk/scientific-facilities/bioinformatics/
+    orcid: 'https://orcid.org/0000-0002-5926-7768'
+    alias: 'conceptualisation; primary author; data curation; coding'
+  - given-names: Sina
+    family-names: Beier
+    affiliation: Gurdon Institute
+    website: https://www.gurdon.cam.ac.uk/scientific-facilities/bioinformatics/
+    orcid: 'https://orcid.org/0000-0002-8230-4256'
+    alias: 'conceptualisation; primary author; data curation; coding'
+repository-code: "https://github.com/cambiotraining/spatial-transcriptomics"
+url: "https://cambiotraining.github.io/spatial-transcriptomics/"
+license: CC-BY-4.0
+commit: ""
+date-released: "2025-04-30"
