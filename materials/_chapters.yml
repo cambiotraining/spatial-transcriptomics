@@ -2,4 +2,4 @@ book:
   chapters:
     - part: "Day 3"
       chapters:
-        - materials/01-XeniumExample.qmd
+        - materials/01-XeniumExample.md

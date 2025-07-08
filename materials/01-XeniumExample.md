@@ -15,7 +15,7 @@ To run the code in this section, you will need to load the following packages.
 
 ::: {.callout-tip collapse="true"}
 #### Click to expand
-````{r}
+````{{r}}
 library(Seurat)
 library(SeuratWrappers)
 library(Banksy)
@@ -33,7 +33,7 @@ We will use a dataset from the 10X example datasets. The data is available on th
 
 ::: {.callout-tip collapse="true"}
 #### Click to expand
-````{r}
+````{{r}}
 path <- "data/human_melanoma_xenium"
 xenium <- LoadXenium(path, fov = "fov")
 ````
@@ -44,7 +44,7 @@ Perform SCTransform on the Xenium data to normalize and scale the data. Then, ru
 
 ::: {.callout-tip collapse="true"}
 #### Click to expand
-````{r}
+````{{r}}
 xenium <- SCTransform(xenium)
 xenium <- RunPCA(xenium, npcs = 30, features = rownames(xenium))
 xenium <- RunUMAP(xenium, dims = 1:30)
@@ -57,7 +57,7 @@ We will use the Louvain algorithm to cluster the cells in the Xenium dataset. Th
 
 ::: {.callout-tip collapse="true"}
 #### Click to expand
-````{r}
+````{{r}}
 xenium <- FindNeighbors(xenium, dims = 1:30, reduction = "pca")
 xenium <- FindClusters(xenium, resolution = 0.5)
 ````
@@ -69,7 +69,7 @@ You can also show a single cluster on the spatial image by using the `cells` arg
 
 ::: {.callout-tip collapse="true"}
 #### Click to expand
-````{r}
+````{{r}}
 DimPlot(xenium, reduction = "umap", group.by = "seurat_clusters", label = TRUE) +
   labs(title = "UMAP of spatial clusters")
 ImageDimPlot(xenium, group.by = "seurat_clusters") +
@@ -87,7 +87,7 @@ This function will return a data frame with the marker genes for each cluster, a
 
 ::: {.callout-tip collapse="true"}
 #### Click to expand
-````{r}
+````{{r}}
 markers <- FindAllMarkers(xenium, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, pvalue.cutoff = 0.05)
 top_markers <- markers %>%
   group_by(cluster) %>%
@@ -105,7 +105,7 @@ We can use the Banksy package to perform a more detailed analysis of the spatial
 
 ::: {.callout-tip collapse="true"}
 #### Click to expand
-````{r}
+````{{r}}
 banksy <- RunBanksy(xenium,
                     lambda = 0.8, verbose = TRUE,
                     assay = "Xenium", slot = "counts",  features = "variable",
@@ -119,7 +119,7 @@ We will also run clustering on the Banksy results using the `FindNeighbors` and 
 
 ::: {.callout-tip collapse="true"}
 #### Click to expand
-````{r}
+````{{r}}
 banksy <- RunPCA(banksy, assay = "BANKSY", reduction.name = "pca.banksy", npcs = 30, features = rownames(banksy))
 banksy <- RunUMAP(banksy, dims = 1:30, reduction = "pca.banksy")
 banksy <- FindNeighbors(banksy, dims = 1:30, assay = "BANKSY", reduction = "pca.banksy")
@@ -132,7 +132,7 @@ After running the Banksy analysis, we can visualize the spatial clusters identif
 
 ::: {.callout-tip collapse="true"}
 #### Click to expand
-````{r}
+````{{r}}
 ImageDimPlot(banksy, group.by = "banksy_cluster") +
   labs(title = "Spatial clusters identified by Banksy on image data")
 ````
@@ -143,7 +143,7 @@ We can investigate the BANKSY results by looking at the marker genes for each Ba
 
 ::: {.callout-tip collapse="true"}
 #### Click to expand
-````{r}
+````{{r}}
 banksy_markers <- FindAllMarkers(banksy, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, assay = "BANKSY", pvalue.cutoff = 0.05)
 banksy_top_markers <- banksy_markers %>%
   group_by(cluster) %>%
@@ -164,7 +164,7 @@ We can also visualize the overlap between the Banksy clusters and the Seurat clu
 
 ::: {.callout-tip collapse="true"}
 #### Click to expand
-````{r}
+````{{r}}
 contingency_table <- table(banksy$banksy_cluster, xenium$seurat_clusters)
 pheatmap(contingency_table,
          cluster_rows = TRUE,
@@ -185,7 +185,7 @@ We will use the `org.Hs.eg.db` package to map the gene symbols to Entrez IDs, wh
 
 ::: {.callout-tip collapse="true"}
 #### Click to expand
-````{r}
+````{{r}}
 # Convert gene symbols for one cluster to Entrez IDs (let's do cluster 0 for Seurat and Banksy as an example)
 seurat_cluster0 <- markers[markers$cluster == 0,]$gene
 # Convert gene symbols to Entrez IDs
