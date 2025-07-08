@@ -1,5 +1,5 @@
 book:
   chapters:
-    - part: "Section title"
+    - part: "Day 3"
       chapters:
-        - materials/00-template.md
+        - materials/01-XeniumExample.qmd
