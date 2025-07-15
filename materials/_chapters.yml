@@ -1,5 +1,18 @@
 book:
   chapters:
+    - part: "Day 1"
+      chapters:
+        - materials/01-LoadingData.md
+    - part: "Day 2"
+      chapters:
+        - materials/02-Preprocessing.md
+        - materials/03-BasicClustering.md
+        - materials/04-Deconvolution.md
+        - materials/05-BasicVisium.md
+        - materials/06-BasicMerfish.md
+        - materials/07-GeneSetEnrichment.md
     - part: "Day 3"
       chapters:
-        - materials/01-XeniumExample.md
+        - materials/08-SpatiallyVariableFeatures.md
+        - materials/09-VisiumExample.md
+        - materials/10-XeniumExample.md

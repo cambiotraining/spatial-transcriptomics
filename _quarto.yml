@@ -22,8 +22,7 @@ filters:
   - courseformat
 
 execute:
-  #freeze: auto
-  eval: false
+  freeze: auto
 
 knitr:
   opts_knit:

@@ -65,7 +65,7 @@ xenium <- FindClusters(xenium, resolution = 0.5)
 
 ## Visualizing Clusters
 We can visualize the clusters using the UMAP reduction we created earlier. The `DimPlot` function allows us to plot the UMAP with the clusters colored by their cluster identity. For spatial data, we can also visualize the clusters on the spatial coordinates of the cells, by using the `ImageDimPlot` function.
-You can also show a single cluster on the spatial image by using the `cells` argument in the `ImageDimPlot` function and selecting the cells from a specific cluster using the `WhichCells` function.
+You can also show a single cluster on the spatial image by using the `cells` argument in the `ImageDimPlot` function and selecting the cells from a specific cluster using the `WhichCells` function to select only cells from cluster 0.
 
 ::: {.callout-tip collapse="true"}
 #### Click to expand
@@ -193,7 +193,7 @@ entrez_seurat_cluster0 <- bitr(seurat_cluster0, fromType = "SYMBOL",
                    toType = "ENTREZID", 
                    OrgDb = org.Hs.eg.db)
 # Perform GO enrichment analysis
-go_enrichment_seurat <- enrichGO(gene = entrez_seurat_cluster0$ENTREZID,
+go_enrichment_seurat_cluster0 <- enrichGO(gene = entrez_seurat_cluster0$ENTREZID,
                           OrgDb = org.Hs.eg.db,
                           keyType = "ENTREZID",
                           ont = "BP", # Biological Process
@@ -201,9 +201,9 @@ go_enrichment_seurat <- enrichGO(gene = entrez_seurat_cluster0$ENTREZID,
                           qvalueCutoff = 0.05,
                           readable = TRUE)
 # View the results
-head(go_enrichment_seurat)
+head(go_enrichment_seurat_cluster0)
 # Plotting the GO enrichment results for Seurat cluster 0
-barplot(go_enrichment_seurat, showCategory = 10) +
+barplot(go_enrichment_seurat_cluster0, showCategory = 10) +
   labs(title = "GO Enrichment for Seurat Cluster 0")
 
 # For Banksy cluster 0, we will do the same
@@ -214,7 +214,7 @@ entrez_banksy_cluster0 <- bitr(banksy_cluster0, fromType = "SYMBOL",
                    toType = "ENTREZID", 
                    OrgDb = org.Hs.eg.db)
 # Perform GO enrichment analysis
-go_enrichment_banksy <- enrichGO(gene = entrez_banksy_cluster0$ENTREZID,
+go_enrichment_banksy_cluster0 <- enrichGO(gene = entrez_banksy_cluster0$ENTREZID,
                           OrgDb = org.Hs.eg.db,
                           keyType = "ENTREZID",
                           ont = "BP", # Biological Process
@@ -222,9 +222,9 @@ go_enrichment_banksy <- enrichGO(gene = entrez_banksy_cluster0$ENTREZID,
                           qvalueCutoff = 0.05,
                           readable = TRUE)
 # View the results
-head(go_enrichment_banksy)
+head(go_enrichment_banksy_cluster0)
 # Plotting the GO enrichment results for Banksy cluster 0
-barplot(go_enrichment_banksy, showCategory = 10) +
+barplot(go_enrichment_banksy_cluster0, showCategory = 10) +
   labs(title = "GO Enrichment for Banksy Cluster 0")
 ````
 ::: 
