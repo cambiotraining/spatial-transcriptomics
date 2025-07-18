@@ -68,7 +68,7 @@ DimPlot(merfish, reduction = "spatial", group.by = "communities", cols = palette
 You can save a Seurat object to disk using the `saveRDS()` function. This allows you to preserve your analysis results and share them with others.
 ```r
 # Save the Seurat object to disk
-saveRDS(visium, file = "data/mouse_visium.rds")
+SaveSeuratRds(visium, file = "data/mouse_visium.rds")
 ```
 
 ## Loading Xenium Data into Seurat

@@ -1,5 +1,5 @@
 ---
-title: Simple Clustering of Spatial Transcriptomics Data
+title: Clustering of Spatial Transcriptomics Data
 ---
 
 ::: {.callout-tip}

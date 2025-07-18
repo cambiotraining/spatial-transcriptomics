@@ -36,13 +36,19 @@ Download and unzip the folder to your Desktop to follow along with the materials
     if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
-    install.packages(c("ggplot2", "dplyr", "pheatmap", "R.utils", "remotes"))
+    install.packages(c("ggplot2", "dplyr", "pheatmap", "R.utils", "remotes", "paletteer", "devtools"))
 
     BiocManager::install("Seurat")
     BiocManager::install("clusterProfiler")
     BiocManager::install("org.Hs.eg.db")
+    BiocManager::install('glmGamPoi')
+    BiocManager::install("SpatialExperiment")
+    BiocManager::install("SummarizedExperiment")
 
     remotes::install_github('satijalab/seurat-wrappers')
     remotes::install_github("prabhakarlab/Banksy")
+    #remotes::install_github("bnprks/BPCells/r")
+
+    devtools::install_github("dmcable/spacexr", build_vignettes = FALSE)
 
     ```
