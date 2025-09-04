@@ -36,9 +36,9 @@ Download and unzip the folder to your Desktop to follow along with the materials
     if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
-    install.packages(c("ggplot2", "dplyr", "pheatmap", "R.utils", "remotes", "paletteer", "devtools"))
+    install.packages(c("ggplot2", "dplyr", "pheatmap", "R.utils", "remotes", "paletteer", "devtools", "Rfast2"))
 
-    BiocManager::install("Seurat")
+    #BiocManager::install("Seurat") We are installing a developmental version of Seurat below
     BiocManager::install("clusterProfiler")
     BiocManager::install("org.Hs.eg.db")
     BiocManager::install('glmGamPoi')
@@ -50,5 +50,10 @@ Download and unzip the folder to your Desktop to follow along with the materials
     #remotes::install_github("bnprks/BPCells/r")
 
     devtools::install_github("dmcable/spacexr", build_vignettes = FALSE)
+
+
+    #developmental Seurat version for Visium HD 3' data
+    devtools::install_github("satijalab/seurat-object", ref = "spaceranger-4.0", force = TRUE)
+    devtools::install_github("satijalab/seurat", ref = "spaceranger-4.0", force = TRUE) 
 
     ```

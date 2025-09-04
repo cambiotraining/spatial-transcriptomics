@@ -35,7 +35,7 @@ After calculating the QC metrics, you can visualize them using scatter plots or 
 # Visualize QC metrics
 VlnPlot(visium, features = c("nCount_Spatial", "percent.mt"), ncol = 2)
 # Remove low-quality cells and check the difference in metrics
-visium <- subset(visium, subset = nCount_Spatial > 500 & percent.mt < 10)
+visium <- subset(visium, subset = nCount_Spatial > 200 & percent.mt < 5)
 VlnPlot(visium, features = c("nCount_Spatial", "percent.mt"), ncol = 2)
 ```
 
@@ -61,7 +61,7 @@ We can load the preprocessed object to avoid waiting for the normalization step 
 
 ```r
 # Load the precomputed preprocessed Seurat object
-visium <- LoadSeuratRds(visium, file = "precomputed/preprocessed_mouse_visium.rds")
+visium <- LoadSeuratRds(visium, file = "precomputed/preprocessed_human lung_visium.rds")
 ``` 
 
 This code provides a basic structure for preprocessing spatial transcriptomics data in Seurat, including scaling, normalization, quality control, and filtering of low-quality cells. You can adapt the parameters based on your specific dataset and analysis requirements.

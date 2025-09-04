@@ -7,7 +7,7 @@ book:
         - materials/03-Deconvolution.md
     - part: "Day 2"
       chapters:
-        - materials/04-DimensionalReduction.md
+        - materials/04-DimensionalityReduction.md
         - materials/05-Clustering.md
         - materials/06-Visualisation.md
         - materials/07-GeneSetEnrichment.md

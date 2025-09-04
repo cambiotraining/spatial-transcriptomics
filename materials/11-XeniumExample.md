@@ -48,7 +48,7 @@ We will use the Louvain algorithm to cluster the cells in the Xenium dataset. Th
 
 ```r
 xenium <- FindNeighbors(xenium, dims = 1:30, reduction = "pca")
-xenium <- FindClusters(xenium, resolution = 0.5)
+xenium <- FindClusters(xenium, resolution = 0.5, algorithm = 4)
 ```
 
 
@@ -101,7 +101,7 @@ We will also run clustering on the Banksy results using the `FindNeighbors` and 
 banksy <- RunPCA(banksy, assay = "BANKSY", reduction.name = "pca.banksy", npcs = 30, features = rownames(banksy))
 banksy <- RunUMAP(banksy, dims = 1:30, reduction = "pca.banksy")
 banksy <- FindNeighbors(banksy, dims = 1:30, assay = "BANKSY", reduction = "pca.banksy")
-banksy <- FindClusters(banksy, resolution = 0.3, assay = "BANKSY", cluster.name = "banksy_cluster")
+banksy <- FindClusters(banksy, resolution = 0.3, algorithm = 4, assay = "BANKSY", cluster.name = "banksy_cluster")
 ```
 
 

@@ -7,7 +7,8 @@ title: Deconvolution of Spatial Transcriptomics Data
 
 - Understand the concept of deconvolution in spatial transcriptomics
 - Apply deconvolution methods to spatial transcriptomics data
-- Interpret the results of deconvolution analyses 
+- Use the `RCTD` package for deconvolution analysis
+- Visualize and interpret deconvolution results
 :::
 
 ## Deconvolution of Spatial Transcriptomics Data
