@@ -44,3 +44,13 @@ eigValues = (pca@stdev)^2  ## EigenValues
 varExplained = eigValues / total_variance
 plot(varExplained, xlab = "PCs", ylab = "Variance Explained", main = "Variance Explained by PCs")
 ``` 
+
+## Uniform Manifold Approximation and Projection (UMAP)
+UMAP is another dimensionality reduction technique that is particularly well-suited for visualizing high-dimensional data in a low-dimensional space. In Seurat, you can perform UMAP using the `RunUMAP` function. This function computes the UMAP embedding of the data and stores it in the Seurat object. 
+
+```r
+# Perform UMAP on the PCA results
+visium <- RunUMAP(visium, reduction = "pca", dims = 1:30)
+#Visualize the UMAP results
+DimPlot(visium, reduction = "umap", label = TRUE) + ggtitle("UMAP of Spatial Transcriptomics Data")
+```

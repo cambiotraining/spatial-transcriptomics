@@ -1,18 +1,20 @@
 book:
   chapters:
-    - part: "Day 1"
+    - part: "Session 1"
       chapters:
         - materials/01-LoadingData.md
         - materials/02-Preprocessing.md
-        - materials/03-Deconvolution.md
-    - part: "Day 2"
+        - materials/03-DimensionalityReduction.md
+       
+    - part: "Session 2"
       chapters:
-        - materials/04-DimensionalityReduction.md
-        - materials/05-Clustering.md
+        - materials/04-Clustering.md
+        - materials/05-Deconvolution.md
         - materials/06-Visualisation.md
-        - materials/07-GeneSetEnrichment.md
-        - materials/08-SpatiallyVariableFeatures.md
-    - part: "Day 3"
+        - materials/07-SpatiallyVariableFeatures.md
+        - materials/08-TissueArchitecture.md
+    
+    - part: "Session 3"
       chapters:
         - materials/09-CellCellInteraction.md
         - materials/10-VisiumExample.md
