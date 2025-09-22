@@ -21,7 +21,7 @@ library(Seurat)
 # We will also use the `paletteer` package for color palettes
 library(paletteer)
 # Load the spatial transcriptomics data
-visium <- Load10X_Spatial("data/mouse_visium")
+visium <- Load10X_Spatial("data/mouse_sagittal", filename = "V1_Mouse_Brain_Sagittal_Anterior_Section_2_filtered_feature_bc_matrix.h5")
 ```
 This will create a Seurat object containing the spatial transcriptomics data, which includes gene expression data, spatial coordinates, an image of the tissue slide and other metadata.
 
@@ -68,7 +68,7 @@ DimPlot(merfish, reduction = "spatial", group.by = "communities", cols = palette
 You can save a Seurat object to disk using the `saveRDS()` function. This allows you to preserve your analysis results and share them with others.
 ```r
 # Save the Seurat object to disk
-SaveSeuratRds(visium, file = "data/mouse_visium.rds")
+SaveSeuratRds(visium, file = "data/mouse_sagittal.rds")
 ```
 
 ## Loading Xenium Data into Seurat

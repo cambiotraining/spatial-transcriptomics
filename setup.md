@@ -47,6 +47,8 @@ Download and unzip the folder to your Desktop to follow along with the materials
 
     remotes::install_github('satijalab/seurat-wrappers')
     remotes::install_github("prabhakarlab/Banksy")
+ 
+   
     #remotes::install_github("bnprks/BPCells/r")
 
     devtools::install_github("dmcable/spacexr", build_vignettes = FALSE)

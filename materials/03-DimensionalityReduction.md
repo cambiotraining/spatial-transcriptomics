@@ -10,13 +10,14 @@ title: Dimensionality Reduction
 - Understand the interpretation of PCA and UMAP results
 :::
 
-```r
-# Load the Seurat library
-library(Seurat)
-#load the precomputed preprocessed Seurat object
-visium <- LoadSeuratRds("precomputed/preprocessed_human_lung_visium.rds")
 
-```
+## Introduction
+We will keep working on the sagittal mouse brain dataset we have been using in previous chapters. If you have not finished the preprocessing, you can load the preprocessed data directly:
+
+```r
+# Load the precomputed preprocessed Seurat object
+visium <- LoadSeuratRds(visium, file = "precomputed/preprocessed_mouse_sagittal.rds")
+``` 
 
 ## Principal Component Analysis (PCA)
 Principal Component Analysis (PCA) is a dimensionality reduction technique that helps to reduce the complexity of high-dimensional data while retaining most of the variance. In Seurat, you can perform PCA using the `RunPCA` function. This function computes the principal components of the data and stores them in the Seurat object.
@@ -52,5 +53,30 @@ UMAP is another dimensionality reduction technique that is particularly well-sui
 # Perform UMAP on the PCA results
 visium <- RunUMAP(visium, reduction = "pca", dims = 1:30)
 #Visualize the UMAP results
-DimPlot(visium, reduction = "umap", label = TRUE) + ggtitle("UMAP of Spatial Transcriptomics Data")
+umap <- DimPlot(visium, reduction = "umap", label = TRUE) + ggtitle("UMAP of Spatial Transcriptomics Data")
 ```
+
+## tSNE
+tSNE is another popular dimensionality reduction technique that is often used for visualizing high-dimensional data. In Seurat, you can perform tSNE using the `RunTSNE` function. This function computes the tSNE embedding of the data and stores it in the Seurat object. It's commonly accepted that UMAP performs better than tSNE, but it can still be useful to compare the results of both methods.
+
+```r
+# Perform tSNE on the PCA results
+visium <- RunTSNE(visium, reduction = "pca", dims = 1:30)
+#Visualize the tSNE results
+tsne <- DimPlot(visium, reduction = "tsne", label = TRUE) + ggtitle("tSNE of Spatial Transcriptomics Data")
+
+umap + tsne
+``` 
+
+## Conclusion
+In this chapter, we have learned how to perform PCA and UMAP on spatial transcriptomics data using Seurat. We have also visualized the results using UMAP and tSNE plots. Dimensionality reduction techniques like PCA and UMAP are essential for analyzing high-dimensional data, as they help to reduce complexity while retaining important information. 
+You can use these techniques to explore and visualize your spatial transcriptomics data, identify patterns, and gain insights into the underlying biology.
+
+## Summary
+::: {.callout-tip}
+#### Key Points
+- PCA is a dimensionality reduction technique that helps to reduce the complexity of high-dimensional data while retaining most of the variance.
+- UMAP is another dimensionality reduction technique that is particularly well-suited for visualizing high-dimensional data in a low-dimensional space.
+- Seurat provides functions for performing PCA, UMAP and tSNA on spatial transcriptomics data.
+- Dimensionality reduction techniques like PCA and UMAP are essential for analyzing high-dimensional data, as they help to reduce complexity while retaining important information.
+:::
