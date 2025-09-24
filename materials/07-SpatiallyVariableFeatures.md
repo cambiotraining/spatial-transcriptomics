@@ -23,13 +23,7 @@ head(SpatiallyVariableFeatures(visium), 10)
 Seurat offers several methods for identifying spatially variable features, including "markvariogram" and  "moransi". The choice of method may depend on the specific characteristics of your data and the biological questions you are interested in. In this example, we used the "moransi" method, which is based on Moran's I statistic.
 We will limit our analysis to the top 100 spatially variable features, but you can adjust this number based on your dataset and research goals. We are also not running this analysis using the markvariogram method, as it takes a long time to compute.
 
-If you would like to compare the results of both methods, you will have to run the markvariogram method on a copy of the Seurat object, as running `FindSpatiallyVariableFeatures` again will overwrite the previous results. Even on this small dataset, the markvariogram method will take a few minutes to compute.
-
-```r
-visium2 <- visium
-visium2 <- FindSpatiallyVariableFeatures(visium2, assay = "SCT", selection.method = "markvariogram", nfeatures = 100)
-```
-
+If you would like to compare the results of both methods, you will have to run the markvariogram method on a copy of the Seurat object, as running `FindSpatiallyVariableFeatures` again will overwrite the previous results.
 ## Visualizing Spatially Variable Features
 Once you have identified spatially variable features, you can visualize them on spatial maps using the `SpatialFeaturePlot` function. We will also add the SpatialDimPlot to the visualization to see how the spatially variable features relate to the clusters we have previously identified.
 

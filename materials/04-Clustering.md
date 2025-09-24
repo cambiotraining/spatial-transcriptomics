@@ -82,7 +82,7 @@ After clustering, we can identify marker genes for each cluster using the `FindA
 #Set the identity class to the clustering we want to find markers for
 Idents(visium) <- visium$Leiden_08
 # Identify marker genes for each cluster
-markers <- FindAllMarkers(visium, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+markers <- FindAllMarkers(visium, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, pvalue.cutoff = 0.05)
 # View top markers for each cluster
 top10 <- markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
 
