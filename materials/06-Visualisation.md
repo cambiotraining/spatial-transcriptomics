@@ -49,3 +49,14 @@ DotPlot(visium, features = c("Gng4", "Ttr"), group.by = 'seurat_clusters') + ggt
 Create a heatmap of gene expression across clusters
 DoHeatmap(visium, features = c("Gng4", "Ttr"), group.by = 'seurat_clusters') + ggtitle("Heatmap of Gene Expression")  
 ```
+
+## Conclusion
+In this section, we have explored various visualization techniques for spatial transcriptomics data using Seurat and other R packages. Effective visualization is crucial for interpreting complex spatial data and gaining insights into tissue architecture and function. By leveraging these tools, you can create informative and visually appealing representations of your spatial transcriptomics data.
+
+## Summary  
+::: {.callout-tip}
+#### Key Points   
+- Seurat provides functions like `SpatialFeaturePlot` and `SpatialDimPlot` for visualizing spatial transcriptomics data.
+- Customization options allow for enhanced visualization of gene expression and clusters.
+- Additional R packages like `ggplot2`, `cowplot`, and `patchwork` can be used for advanced plotting techniques.
+::: 
