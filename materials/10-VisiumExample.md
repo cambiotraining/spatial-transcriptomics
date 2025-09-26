@@ -18,7 +18,8 @@ title: Visium Example
 ## Loading Visium Data into Seurat
 To load Visium data into Seurat, you can use the `Load10X_Spatial` function. This function reads the Visium data from a specified directory and creates a Seurat object.
 In this example we are loading a Visium HD 3' dataset. Seurat supports loading 3' datasets through a developmental feature. Please note that this is still experimental and may not work for all datasets. We need to load additional libraries to handle this type of data. 
-We are going to use a zebrafish dataset from 10x Genomics, which can be found [here](https://www.10xgenomics.com/resources/datasets/zebrafish-head-3-1-standard-3-0-0). It comes with pre-segmented data, which we will use int this case to avoid using binned data and having to deconvolute it. Please make sure the relevant directories have been unzipped. Make sure that both the `binned_outputs` and `spatial` directories are uncompressed as well as the `segmented_outputs` directory for pre-segmented high-resolution data. To keep our dataset small enough to run on a standard laptop, we will only loadthe segmented polygons data.
+We are going to use a dataset from 10x Genomics, which can be found [here](https://www.10xgenomics.com/resources/datasets/zebrafish-head-3-1-standard-3-0-0). This is a Visium HD 3' dataset of a zebrafish head section.
+It comes with pre-segmented data, which we will use int this case to avoid using binned data and having to deconvolute it. Please make sure the relevant directories have been unzipped. Make sure that both the `binned_outputs` and `spatial` directories are uncompressed as well as the `segmented_outputs` directory for pre-segmented high-resolution data. To keep our dataset small enough to run on a standard laptop, we will only load the segmented polygons data.
 
 ```r
 library(Seurat)
@@ -68,53 +69,91 @@ v3d <- FindClusters(v3d, algorithm = 4, resolution = 0.3, cluster.name = "leiden
 DimPlot(v3d, reduction = "umap", group.by = "leidenClusters_03", label = TRUE) + ggtitle("Leiden Clusters (res=0.3)")
 SpatialDimPlot(v3d, group.by = "leidenClusters_03", label = TRUE) + ggtitle("Leiden Clusters (res=0.3)")
 ``` 
-
-## Identifying Marker Genes
-We can identify marker genes for each cluster using the `FindAllMarkers` function. 
+## Subsetting the Object
+Since this is a rather large dataset, we will subset it to only include roughly the eye of the zebrafish head for the rest of the analysis. We can do this by subsetting based on the spatial coordinates. 
 
 ```r
-# Identify marker genes for each cluster
-markers <- FindAllMarkers(v3d, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, assay = "Polygon")
-# View top markers for each cluster
-top10 <- markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
-# We will look at cluster 0 as an example
-top10[top10$cluster==0,]
+#Get tissue coordinates
+tissue <- GetTissueCoordinates(v3d, image = "slice1.polygons")
+#Filter coordinates to only include the eye region
+tissue_filtered <- tissue[tissue$x>=250 & tissue$x<=400 & tissue$y>=250 & tissue$y<=400, ]
+cropped_cells <- tissue_filtered$cell
+
+#Subset the object to only include the eye region
+eye <- subset(v3d, cells = cropped_cells)
+SpatialFeaturePlot(eye, images = "slice1.polygons", features = "nCount_Spatial.Polygons", plot_segmentations = TRUE, crop = TRUE)
+
+This data now has to be preprocessed again after subsetting. 
+
+```r
+#Preprocess the subsetted data again
+eye <- SCTransform(eye,assay = "Spatial.Polygons", new.assay.name = "Polygon", conserve.memory = TRUE, variable.features.n = 1000, ncells = 2000)
+DefaultAssay(eye) <- "Polygon"
+eye <- RunPCA(eye, assay = "Polygon", verbose = FALSE)
+eye <- RunUMAP(eye, dims = 1:30)
+eye <- FindNeighbors(eye, dims = 1:30)
+eye <- FindClusters(eye, algorithm = 4, resolution = 0.5, cluster.name = "leidenClusters_05")
+
+#Visualize the clusters on the subsetted data
+DimPlot(eye, reduction = "umap", label = TRUE, label.size = 5, group.by = "leidenClusters_05")
+SpatialDimPlot(eye, images = "slice1.polygons", plot_segmentations = TRUE, crop = TRUE, group.by = "leidenClusters_05", label = TRUE, label.size = 5)
 ```
 
-## Running BANKSY Analysis
-We will now run BANKSY on our dataset and visualize the results. BANKSY objects need to be pre-processed again, but without the scaling step, as BANKSY output is already scaled. 
+## Identifying Marker Genes
+We can identify marker genes for each cluster using the `FindAllMarkers` function. This function identifies genes that are differentially expressed in each cluster compared to all other clusters.
 
 ```r
-banksy <- RunBanksy(v3d,
+# Find marker genes for each leiden cluster
+eye_markers <- FindAllMarkers(eye, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, pvalue.cutoff = 0.05)
+```
+
+Additionally we want to see if a BANKSY analysis can help us identify spatial patterns in the data. 
+
+```r
+# Run BANKSY analysis
+eye_banksy <- RunBanksy(eye,
                     lambda = 0.8, verbose = TRUE,
                     assay = "Polygon", slot = "counts",  features = "variable",
                     k_geom = 50
 )
-#We won't scale/normalise here, because that removes the effect of Banksy being already scaled, so we directly run PCA
-banksy <- RunPCA(banksy,  assay = "BANKSY", reduction.name = "pca.banksy", npcs = 30, features = rownames(banksy))
-banksy <- RunUMAP(banksy, dims = 1:30, reduction = "pca.banksy")
-banksy <- FindNeighbors(banksy, dims = 1:30, assay = "BANKSY", reduction = "pca.banksy")
-banksy <- FindClusters(banksy, algorithm = 4, resolution = 0.3, assay = "BANKSY", cluster.name = "banksy_cluster")
+eye_banksy <- RunPCA(eye_banksy,  assay = "BANKSY", reduction.name = "pca.banksy", npcs = 30, features = rownames(banksy))
+eye_banksy <- RunUMAP(eye_banksy, dims = 1:30, reduction = "pca.banksy")
+eye_banksy <- FindNeighbors(eye_banksy, dims = 1:30, assay = "BANKSY", reduction = "pca.banksy")
+eye_banksy <- FindClusters(eye_banksy, algorithm = 4, resolution = 0.3, assay = "BANKSY", cluster.name = "banksy_cluster")
 
 # Visualize BANKSY clusters
-DimPlot(banksy, reduction = "umap", label = TRUE, label.size = 5, group.by = "banksy_cluster", raster = FALSE)
-SpatialDimPlot(banksy, images = "slice1.polygons", plot_segmentations = TRUE, group.by = "banksy_cluster", label = TRUE, label.size = 5)
+DimPlot(eye_banksy, reduction = "umap", label = TRUE, label.size = 5, group.by = "banksy_cluster", raster = FALSE)
+SpatialDimPlot(eye_banksy, images = "slice1.polygons", plot_segmentations = TRUE, group.by = "banksy_cluster", label = TRUE, label.size = 5)
 
 # Identify marker genes for BANKSY clusters
-banksy_markers <- FindAllMarkers(banksy, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, assay = "BANKSY")
-# View top markers for each BANKSY cluster
-top10_banksy <- banksy_markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
-# We will look at cluster 1 as an example
-top10_banksy[top10_banksy$cluster==1,]
+eye_banksy_markers <- FindAllMarkers(eye_banksy, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, assay = "BANKSY", pvalue.cutoff = 0.05)
 ```
 
 ## Identifying Spatially Variable Features
-We can identify spatially variable features using the `FindSpatiallyVariableFeatures` function. This function identifies genes that show spatial patterns in their expression.  
+We can also identify spatially variable features using the `FindSpatiallyVariableFeatures` function. This function identifies genes that show spatially variable expression patterns.
 
 ```r
-# Identify spatially variable features
-spatial_features <- FindSpatiallyVariableFeatures(v3d, assay = "Polygon", selection.method = "markvariogram", nfeatures = 100)
-# View top spatially variable features
-head(spatial_features, 10)
+# Identify spatially variable features using the Moran's I method
+eye <- FindSpatiallyVariableFeatures(eye, assay = "Polygon", selection.method = "moransi", features = VariableFeatures(eye), nfeatures = 20)
+# Visualize the top spatially variable features
+top_spatial_features <- head(SpatiallyVariableFeatures(eye, selection.method = "moransi"), 5)
+SpatialFeaturePlot(eye, images = "slice1.polygons", features = top_spatial_features, plot_segmentations = TRUE, crop = TRUE)
 ```
 
+You can now explore the identified marker genes and spatially variable features to gain insights into the spatial organization of cell types and gene expression patterns in the zebrafish eye tissue.
+
+## Conclusion
+In this example, we have demonstrated how to load, preprocess, and analyze Visium spatial transcriptomics data using Seurat. We have performed subsetting, normalization, dimensionality reduction, clustering, and identified marker genes and spatially variable features. Additionally, we have explored the use of BANKSY for identifying spatial patterns in the data. This workflow can be adapted and extended for other Visium datasets as well.
+
+## Summary
+
+::: {.callout-tip}
+#### Key Points
+-   Visium data can be loaded into Seurat using the `Load10X_Spatial` function.
+-   Quality control is essential to filter out low-quality spots based on metrics like mitochondrial gene percentage.
+-   Normalization and scaling can be performed using the `SCTransform` function.
+-   Dimensionality reduction (PCA, UMAP) and clustering (Leiden algorithm) help identify distinct cell populations.
+-   Marker genes for clusters can be identified using the `FindAllMarkers` function.
+-   BANKSY analysis can reveal spatial patterns in gene expression.
+-   Spatially variable features can be identified using the `FindSpatiallyVariableFeatures` function.
+::: 
