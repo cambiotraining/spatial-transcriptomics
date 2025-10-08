@@ -29,7 +29,7 @@ library(BiocParallel) # for parallel processing
 First, we need to load the the single cell reference data and convert it to an appropriate reference format for RCTD. For this example, we will use a preprocessed single-cell RNA-seq dataset as the reference. We will have a quick look at the data to understand its structure.
 
 ```r
-ref <- readRDS("precomputed/allen_cortex.rds")
+ref <- readRDS("precomputed/mouse_brain_reference_for_RCTD.rds")
 ref <- UpdateSeuratObject(ref)
 
 DimPlot(ref, reduction = "umap", group.by = "class", label = TRUE) + NoLegend()
