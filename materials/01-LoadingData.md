@@ -52,7 +52,7 @@ You can use `ImageDimPlot` to visualize the spatial distribution of cells or spo
 # Visualize the transcript locations on the tissue slide
 ImageDimPlot(visium)
 # Visualize the number of transcripts per spot
-SpatialFeaturePlot(visium, features = "nCount_Spatial.016um")
+SpatialFeaturePlot(visium, features = "nCount_Spatial")
 ```   
 
 ## Loading an Existing Seurat Object
@@ -60,8 +60,10 @@ If you have an existing Seurat object saved to disk, you can load it using the `
 ```r
 # Load an existing Seurat object
 merfish <- readRDS("data/human_heart_merfish/overall_merfish.rds")
-#Visualize the structure of the heart in the MERFISH data
-DimPlot(merfish, reduction = "spatial", group.by = "communities", cols = paletteer_d("ggthemes::Tableau_20")
+# Visualize the structure of the heart in the MERFISH data
+DimPlot(merfish, reduction = "spatial", group.by = "communities", cols = paletteer_d("ggthemes::Tableau_20"))
+# Free some memory by removing the merfish object
+rm(merfish)
 ``` 
 
 ## Saving a Seurat Object
@@ -77,17 +79,17 @@ If you are working with 10X Genomics Xenium data, you can use the `LoadXenium` f
 We will use another dataset from the 10X examples. The data is available on the 10X website and has been downloaded for you in the course materials at `data/human_melanoma_xenium`.
 
 ```r
-path <- "data/human_melanoma_xenium"
-xenium <- LoadXenium(path, fov = "fov")
+xenium <- LoadXenium("data/human_melanoma_xenium", fov = "fov")
 ```
 The FOV (Field of View) parameter allows you to specify which field of view to load if the dataset contains multiple fields. In this case, we are loading the default field of view.
  
-To visualize the Xenium data we will use the `ImageDimPlot` function to plot the spatial distribution of cells or spots in the tissue slide. We can also visualize the number of features measuresd in each location using `ImageFeaturePlot`.
+To visualize the Xenium data we will use the `ImageDimPlot` function to plot the spatial distribution of cells or spots in the tissue slide. We can also visualize the number of features measuresd in each location using `ImageFeaturePlot`. This shows that while the spatial resolution is very high, the number of features measured per location is quite low compared to other spatial transcriptomics technologies. In this case only 382 genes were measured.
 
 ```r
 ImageDimPlot(xenium)
 # Visualize the transcript density on the tissue slide  
 ImageFeaturePlot(xenium, features = "nFeature_Xenium", cols = paletteer_c("grDevices::Blue-Red 3", 150))
+rm(xenium)  # Free some memory by removing the xenium object
 ```
 
 
