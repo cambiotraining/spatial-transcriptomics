@@ -28,9 +28,14 @@ If you would like to compare the results of both methods, you will have to run t
 Once you have identified spatially variable features, you can visualize them on spatial maps using the `SpatialFeaturePlot` function. We will also add the SpatialDimPlot to the visualization to see how the spatially variable features relate to the clusters we have previously identified.
 
 ```r
-# Visualize the top spatially variable features on a spatial plot
-top8_spatial_features <- head(SpatiallyVariableFeatures(visium), 10)
-vf <- SpatialFeaturePlot(visium, features = top8_spatial_features, ncol = 5) + ggtitle("Top 8 Spatially Variable Features")
+# Visualize the top nine spatially variable features on a spatial plot with clusters or celltype annotations
+top9_spatial_features <- head(SpatiallyVariableFeatures(visium), 9)
+vf <- SpatialFeaturePlot(visium, features = top9_spatial_features, ncol = 5) 
+clustering <- SpatialDimPlot(visium, group.by = "Leiden_08", label = TRUE, label.size = 3) + NoLegend()
+vf + clustering + ggtitle("Top 9 Spatially Variable Features and clusters for comparison")
+
+celltyping <- SpatialDimPlot(visium, group.by = "first_type", label = TRUE, label.size = 3) + NoLegend()
+vf + celltyping + ggtitle("Top 9 Spatially Variable Features and celltypes for comparison")
 ```
 
 We can see that some - but not all - of the spatially variable features show spatial patterns matching our previously computed clusters.  While those clusters are not spatially aware, they still capture some of the spatial variation in the data, potentially because some cell types are spatially organized. We will later have a chance to compute spatially aware clusters and compare the results of those clusters and their marker genes to the spatially variable features we have identified here.

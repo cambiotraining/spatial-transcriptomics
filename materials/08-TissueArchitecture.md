@@ -80,7 +80,12 @@ bsp3 <- SpatialDimPlot(banksy3, group.by = "banksy_cluster", label = TRUE) + ggt
 bdp3 + bsp3
 ```
 
-We can see that the result with a lower `k_geom` value of 15 shows more fragmented clusters, while the result with a higher `k_geom` value of 50 shows more connected clusters. Again, depending on the biological question, one may be more relevant than the other. We will keep using lambda = 0.4 and k_geom = 50 for the rest of the analysis.
+We can see that the result with a lower `k_geom` value of 15 shows more fragmented clusters, while the result with a higher `k_geom` value of 50 shows more connected clusters. Again, depending on the biological question, one may be more relevant than the other. We will keep using lambda = 0.4 and k_geom = 50 for the rest of the analysis and clean up the other trys.
+
+```r
+rm(banksy2, banksy3, bdp2, bdp3, bsp2, bsp3)
+gc()
+```
 
 ## Comparing Tissue Architecture to Non-spatially Informed Clustering and Spatially Variable Genes
 We can compare the BANKSY clusters to the vlusters we have previously identified using non-spatially informed clusteringand the spatially variable genes. We can visualize the previous clusters on a spatial plot and compare them to the BANKSY clusters.
@@ -116,7 +121,7 @@ cluster_marker_genes <- unique(markers$gene)
 overlap_genes2 <- intersect(banksy_marker_genes, cluster_marker_genes)
 banksy_only2 <- setdiff(banksy_marker_genes, cluster_marker_genes)
 cluster_only <- setdiff(cluster_marker_genes, banksy_marker_genes)
-length(spatially_only2)
+length(banksy_only2)
 length(overlap_genes2)
 length(cluster_only)
 ```
