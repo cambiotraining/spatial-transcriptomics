@@ -20,8 +20,8 @@ Quality control (QC) is crucial to ensure the reliability of the data. In Seurat
 
 ```r
 # Calculate QC metrics
-visium[["percent.mt"]] <- PercentageFeatureSet(visium, pattern = "^MT-")
-visium[["nCount_Spatial"]] <- Matrix::colSums(visium@assay$Spatial.016um) 
+visium[["percent.mt"]] <- PercentageFeatureSet(visium, pattern = "^mt-")
+visium[["nCount_Spatial"]] <- Matrix::colSums(visium@assays$Spatial) 
 ``` 
 ## Identifying and Removing Low-Quality Cells
 After calculating the QC metrics, you can visualize them using scatter plots or histograms to identify low-quality cells. You can then remove these cells from the dataset.

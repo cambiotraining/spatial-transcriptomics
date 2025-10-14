@@ -35,7 +35,7 @@ ElbowPlot(visium, ndims = 50, reduction = 'pca50')
 If we have selected a good number of PCs, we should see a clear elbow in the plot, indicating that the first few PCs capture most of the variance in the data. To be sure we can also check the variance explained by the selected PCs:
 
 ```r  
-mat <- Seurat::GetAssayData(visium, assay = "RNA", slot = "scale.data")
+mat <- Seurat::GetAssayData(visium, assay = "SCT", slot = "scale.data")
 pca <- visium[["pca"]]
 
 # Get the total variance:
@@ -67,6 +67,8 @@ tsne <- DimPlot(visium, reduction = "tsne", label = TRUE) + ggtitle("tSNE of Spa
 
 umap + tsne
 ``` 
+
+These plots show the UMAP and tSNE embeddings of the spatial transcriptomics data, with each point representing a spot in the tissue. They are not particularly informative in this case, as we have not performed any clustering or identified any cell types yet. However, they can be useful for visualizing the overall structure of the data and identifying potential clusters or patterns.
 
 ## Conclusion
 In this chapter, we have learned how to perform PCA and UMAP on spatial transcriptomics data using Seurat. We have also visualized the results using UMAP and tSNE plots. Dimensionality reduction techniques like PCA and UMAP are essential for analyzing high-dimensional data, as they help to reduce complexity while retaining important information. 
