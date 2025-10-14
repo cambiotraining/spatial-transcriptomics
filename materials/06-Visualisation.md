@@ -17,16 +17,17 @@ Seurat provides several functions for visualizing spatial transcriptomics data. 
 # Visualize the expression of specific genes
 SpatialFeaturePlot(visium, features = c("Gng4", "Ttr"), ncol  = 2) + ggtitle("Expression of Gng4 and Ttr")
 # Visualize clusters across the spatial coordinates
-SpatialDimPlot(visium, group.by = "seurat_clusters", label = TRUE) + ggtitle("Spatial Distribution of Clusters")
+SpatialDimPlot(visium, group.by = "Leiden_08", label = TRUE) + ggtitle("Spatial Distribution of Clusters")
 ``` 
 
 You can customize the appearance of these plots using various parameters, such as changing the color scale, adjusting point size, and modifying titles and labels.
 ```r
 # Customize color scale and point size
-SpatialFeaturePlot(visium, features = "Gng4", image.alpha = 0.5, cols = paletteer::paletteer_d("khroma::lapaz"))) + ggtitle("Customized Expression of Gng4")
+SpatialFeaturePlot(visium, features = "Gng4", image.alpha = 0.5) + ggtitle("Expression of Gng4 on image with 50% opacity")
+FeaturePlot(visium, features = "Gng4", cols = paletteer::paletteer_d("khroma::lapaz")) + ggtitle("Expression of Gng4 on UMAP")
 
 # Visualize co-expression of two features simultaneously
-FeaturePlot(visium, features = c("Gng4", "Ttr")), blend = TRUE)
+FeaturePlot(visium, features = c("Gng4", "Ttr"), blend = TRUE)
 ``` 
 
 ## Additional Visualization Techniques
@@ -34,7 +35,6 @@ Beyond the basic visualization functions provided by Seurat, there are several a
 
 ```r
 # Example of using ggplot2 and patchwork for custom visualizations
-library(ggplot2)
 library(patchwork)  
 # Create a ridge plot of gene expression across spatial coordinates
 ridge_plot <- RidgePlot(visium, features = c("Gng4", "Ttr"), ncol = 1, group.by = 'seurat_clusters') + ggtitle("Ridge Plot of Gene Expression")
@@ -42,12 +42,13 @@ ridge_plot <- RidgePlot(visium, features = c("Gng4", "Ttr"), ncol = 1, group.by 
 violin_plot <- VlnPlot(visium, features = c("Gng4", "Ttr"), ncol = 1, group.by = 'seurat_clusters') + ggtitle("Violin Plot of Gene Expression")
 # Combine plots using patchwork
 ridge_plot + violin_plot
+#Combine plots with different heights
+ridge_plot + violin_plot + plot_layout(heights = c(1,1,3))
 
-#Create a dot plot of gene expression across clusters
-DotPlot(visium, features = c("Gng4", "Ttr"), group.by = 'seurat_clusters') + ggtitle("Dot Plot of Gene Expression")
-
-Create a heatmap of gene expression across clusters
-DoHeatmap(visium, features = c("Gng4", "Ttr"), group.by = 'seurat_clusters') + ggtitle("Heatmap of Gene Expression")  
+# Create a dot plot of gene expression across celltypes
+DotPlot(visium, features = c("Gng4", "Ttr"), group.by = 'first_type') + ggtitle("Dot Plot of Gene Expression")
+# Create a heatmap of gene expression across celltypes
+DoHeatmap(visium, features = c("Gng4", "Ttr"), group.by = 'first_type') + ggtitle("Heatmap of Gene Expression")  
 ```
 
 ## Conclusion

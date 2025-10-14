@@ -19,6 +19,9 @@ Seurat offers different clustering algorithms, with the Louvain algorithm being 
 Before clustering we need to compute a nearest neighbor graph using the `FindNeighbors` function. This function constructs a graph based on the PCA results, which is then used for clustering.
 
 ```r
+#load dplyr for data manipulation
+library(dplyr)
+
 #Perform default clustering using Louvain algorithm on the PCA results
 visium <- FindNeighbors(visium, reduction = "pca", dims = 1:30)
 visium <- FindClusters(visium, resolution = 0.5, cluster.name = "Louvain_05") 
@@ -87,7 +90,7 @@ markers <- FindAllMarkers(visium, only.pos = TRUE, min.pct = 0.25, logfc.thresho
 top10 <- markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
 
 #Visualise the 4 top markers for cluster 1
-fp <- SpatialFeaturePlot(visium, features = top10[top10$cluster==1,]$gene[1:4], reduction = "umap", ncol = 2)
+fp <- SpatialFeaturePlot(visium, features = top10[top10$cluster==1,]$gene[1:4], ncol = 2)
 # Visualise the spatial location of cluster 1
 sp <- SpatialDimPlot(visium, cells.highlight = WhichCells(visium, idents = "1")) + ggtitle("Cluster 1 Spatial Location")
 fp + sp

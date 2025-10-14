@@ -23,6 +23,9 @@ visium <- LoadSeuratRds(visium, file = "precomputed/preprocessed_mouse_sagittal.
 Principal Component Analysis (PCA) is a dimensionality reduction technique that helps to reduce the complexity of high-dimensional data while retaining most of the variance. In Seurat, you can perform PCA using the `RunPCA` function. This function computes the principal components of the data and stores them in the Seurat object.
 
 ```r
+#load ggplot2 for visualization
+library(ggplot2)
+
 # Perform PCA on the preprocessed data
 visium <- RunPCA(visium, assay = "SCT", npcs = 30, verbose = FALSE)
 #Check elbow plot to determine the number of significant PCs

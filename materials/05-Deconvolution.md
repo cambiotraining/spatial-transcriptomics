@@ -22,7 +22,6 @@ library(pheatmap)
 library(SingleCellExperiment)
 library(SummarizedExperiment)
 library(SpatialExperiment)
-library(BiocParallel) # for parallel processing 
 ```
 
 ### Load Data
@@ -40,7 +39,7 @@ DimPlot(ref, reduction = "umap", group.by = "cluster", label = TRUE) + NoLegend(
 We will use the subclass annotation for deconvolution, as it provides a good balance between granularity and interpretability. We now need to update the Seurat object to the latest version (just in case it is an older version) and set the identities to the subclass annotation.
 
 ```r
-ref <- UpdateSeuratObject(ref)
+
 Idents(ref) <- "subclass"
 ```
 
@@ -84,7 +83,7 @@ rm(query,reference)
 RCTD <- run.RCTD(RCTD, doublet_mode = "doublet")
 ```
 
-Thius concludes the deconvolution analysis with RCTD. We can now add the results back into the Seurat visium object and visualize them. Because we ran RCTD in doublet mode, we have two sets of results: one for singlets and one for doublets. We will check how many spots are doublets and compare both results.
+This concludes the deconvolution analysis with RCTD. We can now add the results back into the Seurat visium object and visualize them. Because we ran RCTD in doublet mode, we have two sets of results: one for singlets and one for doublets. We will check how many spots are doublets and compare both results.
 
 ```r
 #Add results back into visium object
@@ -100,6 +99,16 @@ first + second
 ```
 
 We can see that most spots are classified as doublets. We will in future analyses focus on the first cell type identified by RCTD, but you can also explore the second cell type or both together. 
+
+To finish this, we will do a little more clean-up to free memory.
+
+```r
+#Clean up memory
+#clean up larger objects
+rm(RCTD, counts, mat)
+#garbage collection
+gc()
+```
 
 ## Conclusion
 In this section, we have learned how to perform deconvolution of spatial transcriptomics data using the `RCTD` package. We prepared both single-cell reference data and spatial transcriptomics data, ran the deconvolution analysis, and visualized the results. Deconvolution can provide valuable insights into the cellular composition of spatially resolved samples, helping to better understand tissue architecture and function.
