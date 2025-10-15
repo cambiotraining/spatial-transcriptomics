@@ -25,8 +25,8 @@ It comes with pre-segmented data, which we will use int this case to avoid using
 library(Seurat)
 library(ggplot2)
 library(patchwork)
-library(dplyr)
-library(sf)
+library(dplyr) 
+library(sf)                                                           
 library(Matrix)
 library(SeuratWrappers)
 library(Banksy)
@@ -50,7 +50,7 @@ VlnPlot(v3d, features = c("nCount_Spatial.Polygons", "percent.mt"), ncol = 2)
 Next, we will normalize and scale the data using the `SCTransform` function. This function performs normalization and variance stabilization. We are also reducing the number of cells used for normalization to speed up the process and reduce memory requirements and adding a parameter to conserve memory. 
 
 ```r
-# Perform SCTransform normalization
+# Perform SCTransform normalization. This is going to take a few minutes, feel free to get a coffee.
 v3d <- SCTransform(v3d,assay = "Spatial.Polygons", new.assay.name = "Polygon", conserve.memory = TRUE, variable.features.n = 1000, ncells = 2000)
 # Set the default assay to the newly created Polygon assay
 DefaultAssay(v3d) <- "Polygon"
@@ -70,18 +70,16 @@ DimPlot(v3d, reduction = "umap", group.by = "leidenClusters_03", label = TRUE) +
 SpatialDimPlot(v3d, group.by = "leidenClusters_03", label = TRUE) + ggtitle("Leiden Clusters (res=0.3)")
 ``` 
 ## Subsetting the Object
-Since this is a rather large dataset, we will subset it to only include roughly the eye of the zebrafish head for the rest of the analysis. We can do this by subsetting based on the spatial coordinates. 
+Since this is a rather large dataset, we will subset it to only include roughly the eye of the zebrafish head for the rest of the analysis. We can do this by subsetting using an interactive plot. 
+Please try selecting the innermost part of the eye - including the lens and one of the surrounding circular tissue layers. Unfortunately a larger selection might make it impossible for you to run the detection of spatially variable features later on in a reasonable timeframe.
 
 ```r
-#Get tissue coordinates
-tissue <- GetTissueCoordinates(v3d, image = "slice1.polygons")
-#Filter coordinates to only include the eye region
-tissue_filtered <- tissue[tissue$x>=250 & tissue$x<=400 & tissue$y>=250 & tissue$y<=400, ]
-cropped_cells <- tissue_filtered$cell
+subset <- InteractiveSpatialPlot(v3d)
 
 #Subset the object to only include the eye region
-eye <- subset(v3d, cells = cropped_cells)
+eye <- subset(v3d, cells = subset)
 SpatialFeaturePlot(eye, images = "slice1.polygons", features = "nCount_Spatial.Polygons", plot_segmentations = TRUE, crop = TRUE)
+```
 
 This data now has to be preprocessed again after subsetting. 
 
@@ -116,10 +114,10 @@ eye_banksy <- RunBanksy(eye,
                     assay = "Polygon", slot = "counts",  features = "variable",
                     k_geom = 50
 )
-eye_banksy <- RunPCA(eye_banksy,  assay = "BANKSY", reduction.name = "pca.banksy", npcs = 30, features = rownames(banksy))
+eye_banksy <- RunPCA(eye_banksy,  assay = "BANKSY", reduction.name = "pca.banksy", npcs = 30, features = rownames(eye_banksy))
 eye_banksy <- RunUMAP(eye_banksy, dims = 1:30, reduction = "pca.banksy")
 eye_banksy <- FindNeighbors(eye_banksy, dims = 1:30, assay = "BANKSY", reduction = "pca.banksy")
-eye_banksy <- FindClusters(eye_banksy, algorithm = 4, resolution = 0.3, assay = "BANKSY", cluster.name = "banksy_cluster")
+eye_banksy <- FindClusters(eye_banksy, algorithm = 4, resolution = 0.3, cluster.name = "banksy_cluster")
 
 # Visualize BANKSY clusters
 DimPlot(eye_banksy, reduction = "umap", label = TRUE, label.size = 5, group.by = "banksy_cluster", raster = FALSE)
@@ -130,13 +128,13 @@ eye_banksy_markers <- FindAllMarkers(eye_banksy, only.pos = TRUE, min.pct = 0.25
 ```
 
 ## Identifying Spatially Variable Features
-We can also identify spatially variable features using the `FindSpatiallyVariableFeatures` function. This function identifies genes that show spatially variable expression patterns.
+We can also identify spatially variable features using the `FindSpatiallyVariableFeatures` function. This function identifies genes that show spatially variable expression patterns. We are going toreduce out input to the variables features only and only request the top 20 spatially variable features to be found. We will use the Moran's I method for this analysis. This will still take a while to compute and is a good time to get a coffee or potentially do this step overnight and finish the rest of the analysis the next day.
 
 ```r
 # Identify spatially variable features using the Moran's I method
-eye <- FindSpatiallyVariableFeatures(eye, assay = "Polygon", selection.method = "moransi", features = VariableFeatures(eye), nfeatures = 20)
+eye <- FindSpatiallyVariableFeatures(eye, assay = "Polygon", method = "moransi", features = VariableFeatures(eye), nfeatures = 20)
 # Visualize the top spatially variable features
-top_spatial_features <- head(SpatiallyVariableFeatures(eye, selection.method = "moransi"), 5)
+top_spatial_features <- head(SpatiallyVariableFeatures(eye), 5)
 SpatialFeaturePlot(eye, images = "slice1.polygons", features = top_spatial_features, plot_segmentations = TRUE, crop = TRUE)
 ```
 

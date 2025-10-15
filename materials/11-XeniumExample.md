@@ -21,23 +21,20 @@ library(dplyr)
 library(ggplot2)
 library(patchwork)
 library(pheatmap)
-library(clusterProfiler)
-library(org.Hs.eg.db) 
 ```
 
 ## Loading the data
 We will use a dataset from the 10X example datasets. The data is available on the 10X website and has been downloaded for you in the course materials at `data/human_melanoma_xenium`.
 
 ```r
-path <- "data/human_melanoma_xenium"
-xenium <- LoadXenium(path, fov = "fov")
+xenium <- LoadXenium("data/human_melanoma_xenium", fov = "fov")
 ```
 
 ## Preprocessing and Dimensionality Reduction
 Perform SCTransform on the Xenium data to normalize and scale the data. Then, run PCA for dimensionality reduction to 30 principal components using all measured features. Finally create a UMAP reduction for future visualization.
 
 ```r
-xenium <- SCTransform(xenium)
+xenium <- SCTransform(xenium, assay = "Xenium", verbose = FALSE)
 xenium <- RunPCA(xenium, npcs = 30, features = rownames(xenium))
 xenium <- RunUMAP(xenium, dims = 1:30)
 ```
@@ -62,9 +59,9 @@ DimPlot(xenium, reduction = "umap", group.by = "seurat_clusters", label = TRUE) 
 ImageDimPlot(xenium, group.by = "seurat_clusters") +
   labs(title = "Spatial clusters on image data")
 
-# Show only cluster 0 on the spatial image
-ImageDimPlot(xenium, cells = WhichCells(xenium, idents = 0)) +
-  labs(title = "Spatial cluster 0 on image data")
+# Show only cluster 1 on the spatial image
+ImageDimPlot(xenium, cells = WhichCells(xenium, idents = 1)) +
+  labs(title = "Spatial cluster 1 on image data")
 ```
 
 ## Finding Marker Genes
@@ -101,7 +98,7 @@ We will also run clustering on the Banksy results using the `FindNeighbors` and 
 banksy <- RunPCA(banksy, assay = "BANKSY", reduction.name = "pca.banksy", npcs = 30, features = rownames(banksy))
 banksy <- RunUMAP(banksy, dims = 1:30, reduction = "pca.banksy")
 banksy <- FindNeighbors(banksy, dims = 1:30, assay = "BANKSY", reduction = "pca.banksy")
-banksy <- FindClusters(banksy, resolution = 0.3, algorithm = 4, assay = "BANKSY", cluster.name = "banksy_cluster")
+banksy <- FindClusters(banksy, resolution = 0.3, algorithm = 4, cluster.name = "banksy_cluster")
 ```
 
 
@@ -131,7 +128,7 @@ BANKSY adds m0 or m1 to the gene names to indicate either mean neighbor expressi
 
 ## Comparing BANKSY and Seurat Clusters
 We can compare the clusters identified by Banksy with the original clusters identified by Seurat. We can use the `table` function to create a contingency table showing the overlap between the Banksy clusters and the Seurat clusters. This will allow us to see how well the Banksy clusters align with the original clusters by counting the number of cells in each Banksy cluster that belong to each Seurat cluster.
-We can also visualize the overlap between the Banksy clusters and the Seurat clusters using a heatmap. The `pheatmap` function can be used to create a heatmap of the contingency table, showing the number of cells in each Banksy cluster that belong to each Seurat cluster.
+We can also visualize the overlap between the Banksy clusters and the Seurat clusters using a heatmap. The `pheatmap` function can be used to create a heatmap of the contingency table, showing the number of cells in each Banksy cluster that belong to each Seurat cluster. We are displaying the number of overlapping genes in each cell of the heatmap using the `display_numbers` argument and formatting the numbers to have no decimal places using the `number_format` argument.
 
 ```r
 contingency_table <- table(banksy$banksy_cluster, xenium$seurat_clusters)
@@ -139,65 +136,23 @@ pheatmap(contingency_table,
          cluster_rows = TRUE,
          cluster_cols = TRUE,
          display_numbers = TRUE,
+         number_format = "%.0f",
          fontsize_number = 10,
          main = "Overlap between Banksy clusters and Seurat clusters",
          color = colorRampPalette(c("white", "blue"))(100))
 ```
 
 Seurat clusters have been calculated using the first 30 principal components using Louvain clustering on gene expression, while Banksy clusters are spatially informed including the mean gene expression of spatial cell neighborhoods. 
-This means that the Banksy clusters are more likely to capture spatial patterns in the data, while the Seurat clusters are more likely to capture gene expression patterns. The overlap between the two clustering methods can provide insights into how well the spatial patterns align with the gene expression patterns.
+This means that the Banksy clusters are more likely to capture spatial patterns in the data, while the Seurat clusters are more likely to capture gene expression patterns. The overlap between the two clustering methods can provide insights into how well the spatial patterns align with the gene expression patterns
 
-## Gene Set Enrichment Analysis
-We can also perform gene set enrichment analysis on the Banksy and Seurat clusters to identify enriched pathways or biological processes. To do that we will use the library `clusterProfiler` to perform the enrichment analysis. We will use the `enrichGO` function to perform Gene Ontology (GO) enrichment analysis on the marker genes for each cluster.
-We will use the `org.Hs.eg.db` package to map the gene symbols to Entrez IDs, which is required for the enrichment analysis.
 
-```r
-# Convert gene symbols for one cluster to Entrez IDs (let's do cluster 0 for Seurat and Banksy as an example)
-seurat_cluster0 <- markers[markers$cluster == 0,]$gene
-# Convert gene symbols to Entrez IDs
-entrez_seurat_cluster0 <- bitr(seurat_cluster0, fromType = "SYMBOL", 
-                   toType = "ENTREZID", 
-                   OrgDb = org.Hs.eg.db)
-# Perform GO enrichment analysis
-go_enrichment_seurat_cluster0 <- enrichGO(gene = entrez_seurat_cluster0$ENTREZID,
-                          OrgDb = org.Hs.eg.db,
-                          keyType = "ENTREZID",
-                          ont = "BP", # Biological Process
-                          pAdjustMethod = "BH",
-                          qvalueCutoff = 0.05,
-                          readable = TRUE)
-# View the results
-head(go_enrichment_seurat_cluster0)
-# Plotting the GO enrichment results for Seurat cluster 0
-barplot(go_enrichment_seurat_cluster0, showCategory = 10) +
-  labs(title = "GO Enrichment for Seurat Cluster 0")
-
-# For Banksy cluster 0, we will do the same
-banksy_cluster0 <- banksy_markers[banksy_markers$cluster == 0,]$gene
-#for the Banksy cluster, we need to remove the ".m0" suffix from the gene names
-banksy_cluster0 <- gsub(".m0$", "", banksy_cluster0)
-entrez_banksy_cluster0 <- bitr(banksy_cluster0, fromType = "SYMBOL", 
-                   toType = "ENTREZID", 
-                   OrgDb = org.Hs.eg.db)
-# Perform GO enrichment analysis
-go_enrichment_banksy_cluster0 <- enrichGO(gene = entrez_banksy_cluster0$ENTREZID,
-                          OrgDb = org.Hs.eg.db,
-                          keyType = "ENTREZID",
-                          ont = "BP", # Biological Process
-                          pAdjustMethod = "BH",
-                          qvalueCutoff = 0.05,
-                          readable = TRUE)
-# View the results
-head(go_enrichment_banksy_cluster0)
-# Plotting the GO enrichment results for Banksy cluster 0
-barplot(go_enrichment_banksy_cluster0, showCategory = 10) +
-  labs(title = "GO Enrichment for Banksy Cluster 0")
-``` 
+Because Xenium data is highly sparse in the number of genes measured per cell, it is usually not possible to identify cell types, unless the panel of genes measured incorporates specific marker genes for a specific cell type of interest, so we will not attempt to assign cell types to the clusters here. We also cannot use this data to apply cell-cell interaction analysis, as this also requires a more comprehensive gene panel to be measured.
 
 ## Conclusion
 In this section, we have gone through the standard analysis steps for Xenium data, including loading the data, preprocessing, dimensionality reduction, clustering, and finding marker genes. We have also used the Banksy package to perform spatially informed clustering on the Xenium data, and compared the Banksy clusters with the original Seurat clusters. 
-This analysis provides a comprehensive overview of how to analyze Xenium data and how to interpret the results. The use of spatially informed clustering allows us to capture spatial patterns in the data, which can provide valuable insights into the biological processes underlying the data. Gene set enrichment analysis allows us to identify enriched pathways or biological processes in the clusters, providing further insights into the biological significance of the clusters.
+This analysis provides a comprehensive overview of how to analyze Xenium data and how to interpret the results. The use of spatially informed clustering allows us to capture spatial patterns in the data, which can provide valuable insights into the biological processes underlying the data.
 This analysis can be extended to other Xenium datasets or spatial transcriptomics datasets, allowing for a comprehensive understanding of spatial patterns and gene expression in various biological contexts.
+The Xenium platform is mainly used for targeted gene panels, so the analysis here is limited to the genes measured in the panel. This is helpful for specific research questions,like studying expesion of a set of genes in a specific tissue context, but often does not allow for a comprehensive analysis of all cells present in the tissue.
 
 ## Summary
 
@@ -208,5 +163,4 @@ This analysis can be extended to other Xenium datasets or spatial transcriptomic
 - Spatial clustering can be performed using the Banksy package
 - Marker genes can be identified for both Seurat and Banksy clusters
 - Comparison of clusters can provide insights into spatial patterns and gene expression patterns
-- Gene set enrichment analysis can identify enriched pathways or biological processes in clusters
 :::
