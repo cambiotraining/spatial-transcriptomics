@@ -47,19 +47,14 @@ Download and unzip the folder to your Desktop to follow along with the materials
     BiocManager::install("BiocNeighbors")
     BiocManager::install("ComplexHeatmap")
     
-  
     remotes::install_github('satijalab/seurat-wrappers')
     remotes::install_github("prabhakarlab/Banksy")
- 
-   
-    #remotes::install_github("bnprks/BPCells/r")
-
     devtools::install_github("dmcable/spacexr", build_vignettes = FALSE)
-
-
+    
     #developmental Seurat version for Visium HD 3' data
     devtools::install_github("satijalab/seurat-object", ref = "spaceranger-4.0", force = TRUE)
     devtools::install_github("satijalab/seurat", ref = "spaceranger-4.0", force = TRUE) 
     devtools::install_github('immunogenomics/presto')
+
     devtools::install_github("jinworks/CellChat")
     ```

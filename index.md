@@ -6,15 +6,18 @@ number-sections: false
 
 ## Overview 
 
-Include a one-paragraph summary of the course here. 
+This course provides a practical introduction to analyzing spatial transcriptomics data using the Seurat package in R and related tools. Participants will learn how to process spatial transcriptomics datasets, perform quality control, normalization, and integration, and apply clustering and dimensionality reduction techniques. The course teaches visualization of spatial gene expression patterns, identification of spatially variable features, and inference of cell-cell interactions. Through hands-on exercises, students will gain proficiency in Seurat’s spatial analysis tools and develop reproducible workflows for high-throughput spatial transcriptomics projects.
 
 ::: {.callout-tip}
 ### Learning Objectives
 
-- List course learning objectives here.
-- These describe concepts the learners should grasp and techniques they should be able to use by the end of the course.
-- You can think of these as completing the phrase "after this course, the participant should be able to..."
-- They are not supposed to be as detailed as the learning objectives of each section, but more high-level.
+- Load and preprocess spatial transcriptomics data using Seurat
+- Perform quality control and normalization of spatial transcriptomics datasets
+- Apply clustering and dimensionality reduction techniques
+- Visualize spatial gene expression patterns and clusters
+- Identify spatially variable features and marker genes
+- Infer cell-cell interactions in spatial contexts
+- Develop reproducible workflows for spatial transcriptomics analysis
 :::
 
 
@@ -31,6 +34,7 @@ This course is aimed at researchers with **no prior experience in the analysis o
   - If you are not able to attend this prerequisite course, please work through our [Unix command line materials](https://cambiotraining.github.io/unix-shell/) ahead of the course (up to section 7). 
 - A working knowledge of R ([course registration page](https://training.csx.cam.ac.uk/bioinformatics/course/bioinfo-introRbio)).
   - If you are not able to attend this prerequisite course, please work through [our R materials](https://cambiotraining.github.io/intro-r/) ahead of the course.
+  - It would be beneficial to have some experience with single-cell RNA-seq analysis in R, for example by attending our [single-cell RNA-seq course](https://training.csx.cam.ac.uk/bioinformatics/course/bioinfo-singlecell-rna-seq) or working through [our single-cell RNA-seq materials](https://cambiotraining.github.io/single-cell-rnaseq/).
 
 
 <!-- Training Developer note: comment the following section out if you did not assign levels to your exercises -->
@@ -66,5 +70,7 @@ If you think you should be added as an author, please get in touch with us.
 
 <!-- if there are no acknowledgements we can delete this section -->
 
-- List any other sources of materials that were used.
-- Or other people that may have advised during the material development (but are not authors).
+- Thank you to 10X Genomics for providing most of the datasets used in these materials.
+- Thank you to the Satija lab for developing and maintaining the Seurat package and for their extensive documentation and tutorials.
+- Thank you to the CambiO Training team for their support in developing and maintaining these materials.
+
