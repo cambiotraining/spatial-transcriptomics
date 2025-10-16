@@ -30,6 +30,15 @@ FeaturePlot(visium, features = "Gng4", cols = paletteer::paletteer_d("khroma::la
 FeaturePlot(visium, features = c("Gng4", "Ttr"), blend = TRUE)
 ``` 
 
+## Interactive Visualization with Seurat
+Interactive visualization in Seurat can be used to subset a dataset based on spatial location. This can helb to select specific regions of interest within the tissue for further analysis. It saves the selected cells into the given variable, which can then be used to subset the Seurat object.
+
+```r
+# Interactive selection of spots in the spatial plot
+selected_cells <- InteractiveSpatialPlot(visium)
+```
+
+
 ## Additional Visualization Techniques
 Beyond the basic visualization functions provided by Seurat, there are several additional packages that can enhance your ability to visualize and interpret spatial transcriptomics data. Some of these packages include `ggplot2`, `cowplot`, and `patchwork` for advanced plotting capabilities.
 
