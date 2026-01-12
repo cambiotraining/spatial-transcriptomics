@@ -6,8 +6,8 @@ title: Dimensionality Reduction
 #### Learning Objectives
 
 - Perform PCA on spatial transcriptomics data
-- Visualize PCA results using UMAP
-- Understand the interpretation of PCA and UMAP results
+- Visualize PCA results using UMAP and tSNE
+- Understand the interpretation of PCA, tSNE and UMAP results
 :::
 
 
@@ -71,7 +71,49 @@ tsne <- DimPlot(visium, reduction = "tsne", label = TRUE) + ggtitle("tSNE of Spa
 umap + tsne
 ``` 
 
+::: {.callout-tip collapse="true"}
+#### Result
 These plots show the UMAP and tSNE embeddings of the spatial transcriptomics data, with each point representing a spot in the tissue. They are not particularly informative in this case, as we have not performed any clustering or identified any cell types yet. However, they can be useful for visualizing the overall structure of the data and identifying potential clusters or patterns.
+![Comparison of UMAP and tSNE on 30 dimensions ](../course_files/data/umapVStsne.png){fig-align="center"}
+
+In the UMAP, the overall layout shows how global relationships are maintained better, showing how different clusters relate to each other in a more continuous manner. The tSNE plot, on the other hand, tends to emphasize local relationships, often resulting in more distinct and separated clusters. This can sometimes lead to misinterpretation of the data structure, as tSNE may suggest that clusters are more isolated than they actually are. On the other hand, tSNE preserves local neighborhood structures more effectively, making it easier to identify small clusters or subpopulations within the data. Depending on the specific analysis goals, one method may be preferred over the other.
+:::
+
+## Adapting UMAP Parameters
+UMAP has several parameters that can be adjusted to change the appearance of the resulting plot. Two important parameters are `n.neighbors` and `min.dist`. The `n.neighbors` parameter controls the size of the local neighborhood used for manifold approximation, while the `min.dist` parameter controls the minimum distance between points in the low-dimensional space. Adjusting these parameters can help to reveal different structures in the data.
+
+```r
+# Perform UMAP with different values for min.dist
+visium_highmin <- RunUMAP(visium, reduction = "pca", dims = 1:30, n.neighbors = 30, min.dist = 0.5, reduction.name = "umap_highmin", reduction.key = "UMAPH")
+visium_lowmin <- RunUMAP(visium, reduction = "pca", dims = 1:30, n.neighbors = 30, min.dist = 0.1, reduction.name = "umap_lowmin", reduction.key = "UMAPL")  
+
+#Visualize the UMAP results with different parameters
+hmp <- DimPlot(visium_highmin, reduction = "umap_highmin", label = TRUE)
+lmp <- DimPlot(visium_lowmin, reduction = "umap_lowmin", label = TRUE)
+
+hmp + lmp
+
+# Perform UMAP with different values for n.neighbors
+visium_highnn <- RunUMAP(visium, reduction = "pca", dims = 1:30, n.neighbors = 100, min.dist = 0.3, reduction.name = "umap_highnn", reduction.key = "UMAPHN")
+visium_lownn <- RunUMAP(visium, reduction = "pca", dims = 1:30, n.neighbors = 5, min.dist = 0.3, reduction.name = "umap_lownn", reduction.key = "UMAPLN")
+
+
+#Visualize the UMAP results with different parameters
+hnn <- DimPlot(visium_highnn, reduction = "umap_highnn", label = TRUE)
+lnn <- DimPlot(visium_lownn, reduction = "umap_lownn", label = TRUE)
+
+hnn + lnn
+```
+
+::: {.callout-tip collapse="true"}
+#### Result
+First let's look at the effect of changing the `min.dist` parameter. A higher `min.dist` value (0.5) results in a more spread-out UMAP plot, where clusters are more separated from each other. This can help to highlight global structures in the data. On the other hand, a lower `min.dist` value (0.1) results in a more compact UMAP plot, where clusters are closer together. This can help to reveal local structures in the data.
+![Left: UMAP with min.dist of 0.5; Right: UMAP with min.dist of 0.1, all other parameters are default and stay the same. ](../course_files/data/hmp_lmp.png){fig-align="center"}
+
+Next, let's look at the effect of changing the `n.neighbors` parameter. A higher `n.neighbors` value (100) results in a UMAP plot that captures more global structures, with clusters being more connected and spread out. This can help to reveal broader patterns in the data. On the other hand, a lower `n.neighbors` value (5) results in a UMAP plot that captures more local structures, with clusters being more distinct and separated. This can help to identify smaller subpopulations within the data.
+![Left: UMAP with n.neighbors of 100; Right: UMAP with n.neighbors of 5, all other parameters are default and stay the same. ](../course_files/data/hnn_lnn.png){fig-align="center"}
+:::
+
 
 ## Conclusion
 In this chapter, we have learned how to perform PCA and UMAP on spatial transcriptomics data using Seurat. We have also visualized the results using UMAP and tSNE plots. Dimensionality reduction techniques like PCA and UMAP are essential for analyzing high-dimensional data, as they help to reduce complexity while retaining important information. 

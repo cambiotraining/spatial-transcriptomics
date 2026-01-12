@@ -4,10 +4,11 @@ book:
       chapters:
         - materials/01-LoadingData.md
         - materials/02-Preprocessing.md
-        - materials/03-DimensionalityReduction.md
+
        
     - part: "Session 2"
       chapters:
+        - materials/03-DimensionalityReduction.md
         - materials/04-Clustering.md
         - materials/05-Deconvolution.md
         - materials/06-Visualisation.md
