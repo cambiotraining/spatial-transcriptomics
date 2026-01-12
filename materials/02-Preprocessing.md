@@ -111,7 +111,7 @@ p1 + p2 + p3 + p4
 #### Result
 This will result in four UMAP plots, where the top ones correspond to `SCTransform` normalization (with and without mitochondrial regression) and the bottom ones correspond to `NormalizeData` with `ScaleData` (with and without mitochondrial regression). The left plots include mitochondrial regression, while the right plots do not. You can compare the clustering patterns and overall structure of the data across these different normalization methods to see how they affect the results.
 
-![UMAPs from normalised and scaled data. Top left: SCTranscform with regression of mitochondrial genes; top right: SCTranscform without regression; bottom left: Log-normalisation with regression of mitochondrial genes; bottom right: log-normalisation without regression. ](../course_files/data/normalisationComp.png){fig-align="center"}
+![UMAPs from normalised and scaled data. Top left: SCTranscform with regression of mitochondrial genes; top right: SCTranscform without regression; bottom left: Log-normalisation with regression of mitochondrial genes; bottom right: log-normalisation without regression. ](graphs/normalisationComp.png){fig-align="center"}
 :::
 
 ## Saving the Preprocessed Data
