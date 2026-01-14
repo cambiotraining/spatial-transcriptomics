@@ -50,9 +50,19 @@ umap_louvain05 + umap_leiden05
 spatial_louvain05 + spatial_leiden05
 ```
 
+::: {.callout-tip collapse="true"}
+#### Result
+
+![Left: UMAP of Louvain Clustering with 0.5 resolution; Right: UMAP of Leiden Clustering with 0.5 resolution, all other parameters are default and stay the same. ](graphs/louvain05_leiden05.png){fig-align="center"}
 
 It's hard to decide which clustering is better just by looking at the plots. Currently it looks like we have not chosen the optimal resolution, as we have big clusters that could be further subdivided. We can try a higher resolution to see if we can identify more distinct clusters.
 
+We can look at the spatial distribution of the clusters to see if they make sense biologically. If we see clusters that are spatially coherent and correspond to known tissue structures, it suggests that the clustering is capturing meaningful biological variation.
+
+![Left: Spatial plot of Louvain Clustering with 0.5 resolution; Right: Spatial plot of Leiden Clustering with 0.5 resolution, all other parameters are default and stay the same. ](graphs/spatial_louvain05_leiden05.png){fig-align="center"}
+:::
+
+Now, let's try a higher resolution of 0.8 for both clustering algorithms and compare the results.
 ```r
 #Perform Louvain clustering with higher resolution
 visium <- FindClusters(visium, resolution = 0.8, cluster.name = "Louvain_08") 
@@ -72,7 +82,15 @@ umap_louvain08 + umap_leiden08
 spatial_louvain08 + spatial_leiden08
 ```
 
+::: {.callout-tip collapse="true"}
+#### Result
+
+![Left: UMAP of Louvain Clustering with 0.8 resolution; Right: UMAP of Leiden Clustering with 0.8 resolution, all other parameters are default and stay the same. ](graphs/louvain08_leiden08.png){fig-align="center"}
+
 Clearly Louvain clustering is more sensitive to changes in the resolution parameter, as we can see a big difference between resolution 0.5 and 0.8. The Leiden algorithm is more robust to changes in the resolution parameter, as the clustering results are more similar between the two resolutions. However, the Leiden clustering at resolution 0.8 seems to be more reasonable than the Louvain clustering at the same resolution, as we can see more distinct clusters in the spatial plot.
+
+![Left: Spatial plot of Louvain Clustering with 0.8 resolution; Right: Spatial plot of Leiden Clustering with 0.8 resolution, all other parameters are default and stay the same. ](graphs/spatial_louvain08_leiden08.png){fig-align="center"}
+:::
 
 Apart from visual inspection, we can also use domain knowledge to evaluate the clustering results.  For example, if we expect 20 cell types in the tissue, we can choose the clustering that results in a similar number of clusters. We have to remember though, that clusters in spatial transcriptomics do not necessarily correspond to cell types, as there can be multiple clusters per cell type due to different states or subtypes. 
 
@@ -95,6 +113,12 @@ fp <- SpatialFeaturePlot(visium, features = top10[top10$cluster==1,]$gene[1:4], 
 sp <- SpatialDimPlot(visium, cells.highlight = WhichCells(visium, idents = "1")) + ggtitle("Cluster 1 Spatial Location")
 fp + sp
 ```
+
+::: {.callout-tip collapse="true"}
+#### Result
+![Top 4: Spatial Feature Plot of top 4 markers for cluster 1; Bottom: Spatial location of cluster 1 highlighted in the tissue.](graphs/fp_sp.png){fig-align="center"}
+
+:::
 
 By default, the `FindAllMarkers` function uses the Wilcoxon rank-sum test for differential expression analysis. Other tests can be specified using the `test.use` parameter. The results include the average log-fold change, p-value, and adjusted p-value for each gene in each cluster. Another option is to use the MAST test, which is specifically designed for single-cell data and can account for cellular detection rates, but is computationally more intensive and not always optimal for spatial transcriptomics data.
 

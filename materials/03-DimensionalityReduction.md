@@ -7,6 +7,8 @@ title: Dimensionality Reduction
 
 - Perform PCA on spatial transcriptomics data
 - Visualize PCA results using UMAP and tSNE
+- Learn about important UMAP parameters and how to adjust them
+- Learn about tSNE parameters
 - Understand the interpretation of PCA, tSNE and UMAP results
 :::
 
@@ -114,9 +116,38 @@ Next, let's look at the effect of changing the `n.neighbors` parameter. A higher
 ![Left: UMAP with n.neighbors of 100; Right: UMAP with n.neighbors of 5, all other parameters are default and stay the same. ](graphs/hnn_lnn.png){fig-align="center"}
 :::
 
+## Adapting tSNE Parameters
+tSNE also has  parameters that can be adjusted to change the appearance of the resulting plot. The most important parameter is `perplexity`. The `perplexity` parameter controls the balance between local and global aspects of the data. Adjusting this parameter can help to reveal different structures in the data.  
+
+```r
+# Perform tSNE with different values for perplexity
+visium_highperp <- RunTSNE(visium, reduction = "pca", dims = 1:30, perplexity = 100, reduction.name = "tsne_highperp", reduction.key = "TSNEHP")
+visium_lowperp <- RunTSNE(visium, reduction = "pca", dims = 1:30, perplexity = 5, reduction.name = "tsne_lowperp", reduction.key = "TSNELP")
+
+#Visualize the tSNE results with different parameters
+htp <- DimPlot(visium_highperp, reduction = "tsne_highperp", label = TRUE)
+ltp <- DimPlot(visium_lowperp, reduction = "tsne_lowperp", label = TRUE)
+
+htp + ltp
+``` 
+
+::: {.callout-tip collapse="true"}
+#### Result
+Let's look at the effect of changing the `perplexity` parameter. A higher `perplexity` value (100) results in a tSNE plot that captures more global structures, with clusters being more connected and spread out. This can help to reveal broader patterns in the data. On the other hand, a lower `perplexity` value (5) results in a tSNE plot that captures more local structures, with small clusters being more distinct and separated. This can help to identify smaller subpopulations within the data.
+
+![Left: tSNE with perplexity of 100; Right: tSNE with perplexity of 5, all other parameters are default and stay the same. ](graphs/htp_ltp.png){fig-align="center"}
+:::
+
+Just like in the last chapter we are going to clean up the environment by removing the created Seurat objects with different UMAP and tSNE parameters. For a propper cleanup we will not only remove the objects but also run garbage collection to free up memory.
+
+```r
+rm(visium_highmin, visium_lowmin, visium_highnn, visium_lownn, visium_highperp, visium_lowperp)
+gc()
+``` 
 
 ## Conclusion
 In this chapter, we have learned how to perform PCA and UMAP on spatial transcriptomics data using Seurat. We have also visualized the results using UMAP and tSNE plots. Dimensionality reduction techniques like PCA and UMAP are essential for analyzing high-dimensional data, as they help to reduce complexity while retaining important information. 
+It's important to note that the choice of parameters in UMAP and tSNE can significantly affect the resulting plots. By adjusting these parameters, we can reveal different structures in the data, allowing for better visualization and interpretation.
 You can use these techniques to explore and visualize your spatial transcriptomics data, identify patterns, and gain insights into the underlying biology.
 
 ## Summary
@@ -126,4 +157,5 @@ You can use these techniques to explore and visualize your spatial transcriptomi
 - UMAP is another dimensionality reduction technique that is particularly well-suited for visualizing high-dimensional data in a low-dimensional space.
 - Seurat provides functions for performing PCA, UMAP and tSNA on spatial transcriptomics data.
 - Dimensionality reduction techniques like PCA and UMAP are essential for analyzing high-dimensional data, as they help to reduce complexity while retaining important information.
+- Adjusting parameters in UMAP and tSNE can help to reveal different structures in the data, allowing for better visualization and interpretation.
 :::

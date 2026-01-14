@@ -114,6 +114,12 @@ This will result in four UMAP plots, where the top ones correspond to `SCTransfo
 ![UMAPs from normalised and scaled data. Top left: SCTranscform with regression of mitochondrial genes; top right: SCTranscform without regression; bottom left: Log-normalisation with regression of mitochondrial genes; bottom right: log-normalisation without regression. ](graphs/normalisationComp.png){fig-align="center"}
 :::
 
+We are going to clean up the environment by removing the created Seurat objects with different normalization methods.
+
+```r
+rm(visiumSCTmt, visiumSCT, visiumScaleMT, visiumScale)
+```
+
 ## Saving the Preprocessed Data
 After preprocessing, you can save the Seurat object to disk for future use.
 ```r

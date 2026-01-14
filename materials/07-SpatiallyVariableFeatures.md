@@ -28,17 +28,28 @@ If you would like to compare the results of both methods, you will have to run t
 Once you have identified spatially variable features, you can visualize them on spatial maps using the `SpatialFeaturePlot` function. We will also add the SpatialDimPlot to the visualization to see how the spatially variable features relate to the clusters we have previously identified.
 
 ```r
-# Visualize the top nine spatially variable features on a spatial plot with clusters or celltype annotations
+# Visualize the top nine spatially variable features on a spatial plot with clusters and celltype annotations for comparison
 top9_spatial_features <- head(SpatiallyVariableFeatures(visium), 9)
-vf <- SpatialFeaturePlot(visium, features = top9_spatial_features, ncol = 5) 
-clustering <- SpatialDimPlot(visium, group.by = "Leiden_08", label = TRUE, label.size = 3) + NoLegend()
-vf + clustering + ggtitle("Top 9 Spatially Variable Features and clusters for comparison")
+SpatialFeaturePlot(visium, features = top9_spatial_features, ncol = 3) 
 
+clustering <- SpatialDimPlot(visium, group.by = "Leiden_08", label = TRUE, label.size = 3) + NoLegend()
 celltyping <- SpatialDimPlot(visium, group.by = "first_type", label = TRUE, label.size = 3) + NoLegend()
-vf + celltyping + ggtitle("Top 9 Spatially Variable Features and celltypes for comparison")
+
+clustering + celltyping
 ```
 
-We can see that some - but not all - of the spatially variable features show spatial patterns matching our previously computed clusters.  While those clusters are not spatially aware, they still capture some of the spatial variation in the data, potentially because some cell types are spatially organized. We will later have a chance to compute spatially aware clusters and compare the results of those clusters and their marker genes to the spatially variable features we have identified here.
+::: {.callout-tip collapse="true"}
+#### Result
+The first plot shows the spatial expression patterns of the top nine spatially variable features identified using the "moransi" method.
+
+![Spatial expression of top 9 spatially variable features](graphs/spatiallyVar.png){fig-align="center"}
+
+For comparison, the second plot shows the spatial distribution of clusters identified by the Leiden algorithm and the spatial distribution of cell type annotations.
+
+![Left: Leiden Clusters at 0.8 resolution; Right: Celltypes as assigned by RCTD](graphs/clusters_celltypes.png){fig-align="center"}
+:::
+
+We can see that some - but not all - of the spatially variable features show spatial patterns matching our previously computed clusters and majority celltypes identified through deconvolution.  While those clusters are not spatially aware, they still capture some of the spatial variation in the data, potentially because some cell types are spatially organized. We will later have a chance to compute spatially aware clusters and compare the results of those clusters and their marker genes to the spatially variable features we have identified here.
 
 ## Biological Significance of Spatially Variable Features
 Spatially variable features can provide insights into the biological processes and cellular interactions occurring within a tissue. For example, genes that are spatially variable may be involved in cell-cell communication, tissue organization, or responses to environmental cues. By studying these features, researchers can gain a better understanding of the spatial organization of gene expression and its implications for tissue function and disease.
