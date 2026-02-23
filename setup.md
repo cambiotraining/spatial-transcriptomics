@@ -38,7 +38,8 @@ Download and unzip the folder to your Desktop to follow along with the materials
 
     install.packages(c("ggplot2", "dplyr", "pheatmap", "R.utils", "remotes", "paletteer", "devtools", "Rfast2"))
 
-    #BiocManager::install("Seurat") We are installing a developmental version of Seurat below
+    BiocManager::install("Seurat")
+    BiocManager::install("SeuratObject")
     BiocManager::install("clusterProfiler")
     BiocManager::install("org.Hs.eg.db")
     BiocManager::install('glmGamPoi')
@@ -49,12 +50,8 @@ Download and unzip the folder to your Desktop to follow along with the materials
     
     remotes::install_github('satijalab/seurat-wrappers')
     remotes::install_github("prabhakarlab/Banksy")
-    devtools::install_github("dmcable/spacexr", build_vignettes = FALSE)
     
-    #developmental Seurat version for Visium HD 3' data
-    devtools::install_github("satijalab/seurat-object", ref = "spaceranger-4.0", force = TRUE)
-    devtools::install_github("satijalab/seurat", ref = "spaceranger-4.0", force = TRUE) 
+    devtools::install_github("dmcable/spacexr", build_vignettes = FALSE)
     devtools::install_github('immunogenomics/presto')
-
     devtools::install_github("jinworks/CellChat")
     ```

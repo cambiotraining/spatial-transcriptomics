@@ -77,6 +77,13 @@ cellchat@DB <- CellChatDB.use
 cellchat <- subsetData(cellchat) 
 ```
 
+::: {.callout-tip collapse="true"}
+#### Result
+![CellChat Database Summary](graphs/chat_db.png)
+
+These are the categories of ligand-receptor interactions available in the CellChat mouse database. Each category represents a different type of signaling mechanism that can occur between cells.
+:::
+
 ## Identify Overexpressed Genes and Interactions
 We will identify overexpressed genes and interactions in the dataset. This step helps to focus the analysis on the most relevant genes and interactions. CellChat offers parallel processing, but this often actually causes more issues than speedup, so we will not be using it. 
 To compute the communication probability at the signaling gene level, we will use the "triMean" method, which is a robust method for estimating communication probabilities. We need to set the 'contact.range' parameter to define the maximum distance for considering cell-cell interactions. Here, we set it to 100 microns, which is the expected distance between the centers of two spots in 10X Visium data. We will also filter the interactions to only consider those that are supported by at least 10 cells.
@@ -98,8 +105,19 @@ cellchat <- aggregateNet(cellchat)
 # cellchat <- loadRDS("precomputed/mouse_brain_cellchat.rds") #load precomputed results
 ```
 
+::: {.callout-tip collapse="true"}
+#### Result
+The number of highly variable ligand-receptor pairs (output of the `identifyOverExpressedInteractions` function) identified for this dataset is 1467. 
+
+We have now computed the cell-cell communication probabilities and aggregated the communication network at the cell type level. The resulting CellChat object contains information about the identified interactions, their probabilities, and the overall communication network between different cell types in the dataset.
+:::
+
 ## Visualize Cell-Cell Communication Network
-Finally, we can visualize the cell-cell communication network using various plotting functions provided by the CellChat package. We will create a circle plot to visualize the overall communication network and a heatmap to show the interaction strength between different cell types as well as a bar plot ranking the signaling pathways by their acttivity scores. 
+Finally, we can visualize the cell-cell communication network using various plotting functions provided by the CellChat package. We will create a circle plot to visualize the overall communication network and a heatmap to show the interaction strength between different cell types as well as a bar plot ranking the signaling pathways by their acttivity scores. We will both choose to visualise two specific pathways of interest: "COLLAGEN" and "LAMININ" together, as well as "LAMININ" alone.
+
+Laminin is a key component of the extracellular matrix and plays a crucial role in cell adhesion, differentiation, migration, and signaling. It is particularly important in the context of neural development and function, making it a relevant pathway to investigate in brain tissue.
+
+Collagen is another major component of the extracellular matrix and is involved in providing structural support to tissues. It also plays a role in cell adhesion and signaling, making it another important pathway to consider in the context of cell-cell interactions.
 
 ```r
 #find all significant signalling pathways
@@ -111,19 +129,54 @@ laminin <- c("LAMININ")
 groupSize <- as.numeric(table(cellchat@idents))
  netVisual_circle(cellchat@net$count, vertex.weight = groupSize, weight.scale = T  , label.edge= F, title.name = "Number of interactions", top = 0.3)
 netVisual_circle(cellchat@net$weight, vertex.weight = groupSize, weight.scale = T  , label.edge= F, title.name = "Interaction weights/strength", top = 0.3)  
+```
 
+::: {.callout-tip collapse="true"}
+#### Result
+The first circle plot shows the number of interactions between different cell types, while the second plot shows the interaction weights or strengths. The size of each node represents the number of cells in that cell type, and the thickness of the edges represents the strength of the interactions between cell types.
 
+![CellChat Circle Plot of the Number of Interactions](graphs/chat_num.png)
+
+![CellChat Circle Plot of the Interaction weights representing potential interaction strength](graphs/chat_weight.png)
+:::
+
+```r
 # Heatmap of interaction strength between cell types
 netVisual_heatmap(cellchat, measure = "weight") 
+```
+::: {.callout-tip collapse="true"}
+#### Result
+The heatmap visualizes the interaction strength between different cell types. The color intensity represents the strength of the interactions, with darker colors indicating stronger interactions. This heatmap provides a comprehensive overview of the communication network, allowing us to identify which cell types are more actively communicating with each other.  
 
+![CellChat Heatmap of Interaction Strength between Cell Types](graphs/chat_heat.png)
+:::
+
+```r
 #Bar plot of the contribution of each ligand-receptor interaction pair to the selected pathways
 netAnalysis_contribution(cellchat, signaling = pathways.selected)
 netAnalysis_contribution(cellchat, signaling = laminin)
+```
+::: {.callout-tip collapse="true"}
+#### Result 
+The bar plots show the contribution of each ligand-receptor interaction pair to the selected pathways. The height of each bar represents the contribution score, which indicates how much each interaction pair contributes to the overall signaling activity of the pathway. This visualization helps to identify the key ligand-receptor pairs that are driving the signaling activity in the selected pathways.
 
+![CellChat Bar Plot of Contribution of Ligand-Receptor Interaction Pairs to the COLLAGEN and LAMININ Pathways](graphs/chat_contr_both.png)
+
+![CellChat Bar Plot of Contribution of Ligand-Receptor Interaction Pairs of only the LAMININ Pathway](graphs/chat_contr_laminin.png)
+:::
+
+```r
 # Bubble Plot of ligand-receptor interactions from one celltype (the 1st, L2/3 IT) to other celltypes (the 3rd to 5th)
 netVisual_bubble(cellchat, sources.use = 1, targets.use = c(3:5), remove.isolate = FALSE)
+```
+::: {.callout-tip collapse="true"}
+#### Result
+The bubble plot visualizes the ligand-receptor interactions from one cell type (L2/3 IT) to other cell types (the 3rd to 5th). Each bubble represents a ligand-receptor pair, with the size of the bubble indicating the strength of the interaction. This plot allows us to see how a specific cell type communicates with other cell types in the tissue.
 
+![CellChat Bubble Plot of Ligand-Receptor Interactions from L2/3 IT to other Cell Types](graphs/chat_bubble.png)
+:::
 
+```r
 #Centrality scores of the selected pathways
 cellchat <- netAnalysis_computeCentrality(cellchat, slot.name = "netP")
 netAnalysis_signalingRole_network(cellchat, signaling = pathways.selected, width =10, height = 4)
@@ -133,12 +186,33 @@ netAnalysis_signalingRole_scatter(cellchat)
 netAnalysis_signalingRole_scatter(cellchat, signaling = c("LAMININ"))
 ```
 
+::: {.callout-tip collapse="true"}
+#### Result
+The first plot shows the centrality scores of the selected pathways, indicating the importance of each cell type in the communication network. 
+![CellChat Centrality Scores of the COLLAGEN and LAMININ Pathways](graphs/chat_sigRole.png)
+
+The second and third plots show the incoming vs outgoing signaling strength for all signaling roles in the network per cell type for all pathways and separately for the laminin pathway. These scatter plots help to identify which cell types are primarily sending or receiving signals in the network.
+
+![CellChat Incoming vs Outgoing Signaling Strength for All Signaling Roles](graphs/chat_sigRole_scatter.png)
+
+![CellChat Incoming vs Outgoing Signaling Strength for the LAMININ Pathway](graphs/chat_sigRole_laminin.png)
+:::
+
 Of course, we can also visualize specific signaling pathways of interest in spatial context.
 
 ```r
 netVisual_aggregate(cellchat, signaling = pathways.selected, layout = "spatial", edge.width.max = 2, vertex.size.max = 1, alpha.image = 0.2, vertex.label.cex = 3.5)
 netVisual_aggregate(cellchat, signaling = laminin, layout = "spatial", edge.width.max = 2, vertex.size.max = 1, alpha.image = 0.2, vertex.label.cex = 3.5)
 ```
+
+::: {.callout-tip collapse="true"}
+#### Result
+The spatial plots visualize the selected signaling pathways in the context of the tissue. The nodes represent different cell types, and the edges represent the interactions between them. The layout is based on the spatial coordinates of the spots, allowing us to see how cell-cell interactions are distributed across the tissue.
+
+![CellChat Spatial Plot of the COLLAGEN and LAMININ Pathways](graphs/chat_spatial1.png)
+
+![CellChat Spatial Plot of the LAMININ Pathway](graphs/chat_spatial_laminin.png)
+:::
 
 There is a plethora of other visualization and investigation options available in the CellChat package. You can explore these options in the CellChat documentation to find the best way to visualize your specific data and research questions.
 

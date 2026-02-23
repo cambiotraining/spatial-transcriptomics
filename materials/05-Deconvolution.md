@@ -93,6 +93,7 @@ RCTD <- run.RCTD(RCTD, doublet_mode = "doublet")
 This concludes the deconvolution analysis with RCTD. We can now add the results back into the Seurat visium object and visualize them. Because we ran RCTD in doublet mode, we have two sets of results: one for singlets and one for doublets. We will check how many spots are doublets and compare both results.
 
 ```r
+
 #Add results back into visium object
 visium <- AddMetaData(visium, metadata = RCTD@results$results_df)
 
@@ -136,6 +137,44 @@ We are comparing the major cell types identified by RCTD with the clusters ident
 
 ![Left: Main celltype identified; Right: Louvain clustering with 0.8 resolution.](graphs/annot_vsLouvain.png){fig-align="center"}
 :::
+
+## Full RCTD
+We have so far only looked at the major and secondary cell type identified by RCTD in doublet mode. Doublet mode is useful to identify the two most likely cell types in each spot and best suited for datasets where most spots contain only one or two cell types. This is actually not the case for the Visium v1 data we are using here, as each spot likely contains multiple cell types based on the spot size of 55um.
+
+However, RCTD also provides a 'full' deconvolution result that estimates the proportions of all cell types in each spot. 
+
+```r
+#Run RCTD in full mode
+RCTD_full <- run.RCTD(RCTD, doublet_mode = "full")
+
+#Add results back into visium object
+visium <- AddMetaData(visium, metadata = RCTD@results$weights)
+```
+
+This will take a bit longer to compute as it estimates the proportions of all cell types in each spot and then adds these as metadata to the Seurat object. We can now visualize the proportions of different cell types identified by RCTD.
+
+```r
+#Visualize proportions of different cell types
+#Identify the cell types from the reference
+ref_cell_types <- colnames(RCTD@results$weights)
+
+#Plot the proportions of the first 4 cell types onto the spatial image
+SpatialFeaturePlot(visium, features = ref_cell_types[1:4])
+
+#Your can find the celltype with the highest proportion in each spot using the `which.max` function.
+max_celltype <- apply(RCTD@results$weights, 1, function(x) ref_cell_types[which.max(x)])
+visium <- AddMetaData(visium, metadata = max_celltype, col.name = "RCTD_max_celltype")
+
+#Plot the celltype with the highest proportion in each spot
+SpatialDimPlot(visium, group.by = "RCTD_max_celltype")
+
+#Plot celltype distribution for a list of spots (for example from cluster 13)
+spot_ids <- WhichCells(visium, ident = "13")
+spot_proportions <- RCTD@results$weights[spot_ids, ]
+pheatmap(t(as.matrix(spot_proportions)), cluster_rows = FALSE, cluster_cols = TRUE, main = "Cell Type Proportions")
+```
+
+
 
 
 To finish this, we will do a little more clean-up to free memory.

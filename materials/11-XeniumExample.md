@@ -41,7 +41,7 @@ xenium <- RunUMAP(xenium, dims = 1:30)
 
 ## Clustering
 Before we run clustering, we need to find the nearest neighbors of each cell in the dataset. This is done using the `FindNeighbors` function. We will use the first 30 principal components from the PCA step for this.
-We will use the Louvain algorithm to cluster the cells in the Xenium dataset. The resolution parameter can be adjusted to control the granularity of the clustering. Here, we will use a resolution of 0.5, which is a common starting point.
+We will use the Leiden algorithm to cluster the cells in the Xenium dataset. The resolution parameter can be adjusted to control the granularity of the clustering. Here, we will use a resolution of 0.5, which is a common starting point.
 
 ```r
 xenium <- FindNeighbors(xenium, dims = 1:30, reduction = "pca")
