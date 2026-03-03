@@ -1,0 +1,61 @@
+---
+title: Quality Control based on Spaceranger Report
+---
+
+::: {.callout-tip}
+#### Learning Objectives
+
+- Understand Spaceranger output and the quality control metrics it provides
+- Learn how to interpret the QC metrics to assess the quality of the data
+- Identify potential issues with the data based on the QC metrics
+:::
+
+## Spaceranger Report Output
+For all samples generated using the 10x Genomics Visium platform, the Spaceranger pipeline produces a comprehensive report that includes various quality control (QC) metrics called 'analysis_summary.html'. 
+These metrics are crucial for assessing the quality of the data and determining whether it is suitable for downstream analysis.
+A similar type of report is also generated for Xenium data, which is based on very similar underlying processing.
+
+Spaceranger reports are typically generated in HTML format and can be accessed through the output directory of the Spaceranger pipeline. The report provides a visual summary of the QC metrics, along with detailed information about the sequencing and capture performance for each sample.
+Reports can be sligthly different depending on the version of Spaceranger used and the input technology, but the core QC metrics are generally consistent across versions.
+
+The Spaceranger report includes several key sections, such as:
+- **Summary**: Provides an overview of the sequencing and capture performance, including total reads, total spots, and the percentage of reads mapped to the reference genome.
+- **Sequencing Metrics**: Includes metrics related to the sequencing quality, such as the percentage of reads with valid barcodes, the percentage of reads with valid UMIs, and the percentage of reads mapped to the reference genome. 
+- **Capture Metrics**: Provides information about the capture performance, including the number of spots detected, the number of genes detected per spot, and the distribution of gene expression across spots.
+- **Segmentation Metrics**: Includes metrics related to the segmentation of the tissue, such as the number of segmented cells and the distribution of UMIs per cell and cell sizes.
+- **Sample (Metadata)**: Provides additional information about the sample, such as the sample name, the date of processing, and the version of Spaceranger used as well as the version of the reference genome.
+- **Analysis (Summary)**: Provides a summary of a very basic default analysis, including the number of clusters identified and the marker genes detected for each cluster.
+- **Image QC**: Provides information about the quality of the tissue image.
+
+Not all of these sections are present for all datasets, as some of the metrics are specific to certain types of data (e.g., segmentation metrics are only relevant for datasets that have been segmented).
+
+## Interpreting QC Metrics
+When interpreting the QC metrics from the Spaceranger report, it is important to consider the following factors:
+- **Total Reads**: A higher number of total reads generally indicates better sequencing depth, which can lead to more accurate gene expression quantification. However, it is important to also consider the percentage of reads that are mapped to the reference genome, as a high number of total reads with a low mapping percentage may indicate issues with the sequencing or sample quality.
+- **Total Spots/Cells**: The number of spots/cells detected can provide insight into the capture performance. A low number of spots may indicate issues with the capture process, while a very high number of spots or cells may indicate potential issues with background noise or over-segmentation.
+- **Percentage of Reads Mapped to Reference Genome**: A high percentage of reads mapped to the reference genome is generally a good indicator of data quality. A low mapping percentage may indicate issues with the sequencing quality, sample quality, or the reference genome used for alignment.
+- **Percentage of Reads with Valid Barcodes/UMIs**: A high percentage of reads with valid barcodes and UMIs is important for accurate quantification of gene expression. A low percentage may indicate issues with the sequencing quality or the library preparation process.
+- **Number of Genes Detected per Spot/Cell**: A higher number of genes detected per spot/cell can indicate better capture performance and higher data quality. However, it is important to also consider the distribution of gene expression across spots/cells, as a very high number of genes detected in a small number of spots/cells may indicate potential issues with background noise or over-segmentation. Hence, both very low and very high numbers of genes detected per spot/cell can be indicative of potential issues with the data quality.
+- **Segmentation Metrics**: For datasets that have been segmented, it is important to consider the number of segmented cells and the distribution of UMIs per cell and cell sizes. A very low number of segmented cells may indicate issues with the segmentation process, while a very high number of segmented cells may indicate potential issues with over-segmentation. Additionally, a very low or very high number of UMIs per cell or very small or large cell sizes may indicate potential issues with the data quality.
+- **Image QC**: The quality of the tissue image can also impact the overall data quality. Poor image quality may indicate issues with the tissue processing or imaging, which can affect the accuracy of the spatial gene expression data.
+
+## Identifying Potential Issues with the Data
+Based on the QC metrics from the Spaceranger report, you can identify potential issues with the data that may need to be addressed before proceeding with downstream analysis. For example:
+- If the percentage of reads mapped to the reference genome is low, you may need to investigate potential issues with the sequencing quality, sample quality, or the reference genome used for alignment. This may involve checking the quality of the raw sequencing data, assessing the sample quality (e.g., RNA integrity), or using a different reference genome for alignment.
+- If the number of spots/cells detected is very low, you may need to investigate potential issues with the capture process. This may involve checking the quality of the tissue section, assessing the capture performance, or optimizing the capture protocol for future experiments.
+- If the percentage of reads with valid barcodes/UMIs is low, you may need to investigate potential issues with the sequencing quality or the library preparation process. This may involve checking the quality of the raw sequencing data, assessing the library preparation process, or optimizing the library preparation protocol for future experiments.
+- If the number of genes detected per spot/cell is very low or very high, you may need to investigate potential issues with the capture performance or background noise. This may involve assessing the distribution of gene expression across spots/cells, checking for potential issues with the tissue processing or imaging, or optimizing the capture protocol for future experiments.
+- If the segmentation metrics indicate potential issues with the segmentation process, you may need to investigate potential issues with the segmentation algorithm or the quality of the tissue image. This may involve assessing the segmentation results, checking for potential issues with the tissue processing or imaging, or optimizing the segmentation algorithm for future experiments. 
+
+
+## Conclusion
+In conclusion, the Spaceranger report provides a comprehensive overview of the quality control metrics for Visium and Xenium datasets. By carefully interpreting these metrics, you can assess the quality of your data and identify potential issues that may need to be addressed before proceeding with downstream analysis. It is important to consider multiple QC metrics in combination, as they can provide complementary information about the overall data quality. By addressing any potential issues identified through the QC metrics, you can ensure that your downstream analysis is based on high-quality data, which can lead to more accurate and reliable results.
+
+## Summary  
+::: {.callout-tip}
+#### Key Points   
+- The Spaceranger report provides a comprehensive overview of the quality control metrics for Visium and Xenium datasets.
+- Key QC metrics include total reads, total spots/cells, percentage of reads mapped to the reference genome, percentage of reads with valid barcodes/UMIs, number of genes detected per spot/cell, segmentation metrics, and image QC.
+- Interpreting these QC metrics can help identify potential issues with the data that may need to be addressed before proceeding with downstream analysis.
+- Addressing any potential issues identified through the QC metrics can help ensure that downstream analysis is based on high-quality data, leading to more accurate and reliable results.
+:::

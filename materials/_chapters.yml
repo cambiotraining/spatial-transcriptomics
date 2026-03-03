@@ -1,5 +1,8 @@
 book:
   chapters:
+    - part: "Information"
+      chapters:
+        - materials/00-QualityControl.md
     - part: "Session 1"
       chapters:
         - materials/01-LoadingData.md
