@@ -20,31 +20,49 @@ Reports can be sligthly different depending on the version of Spaceranger used a
 
 The Spaceranger report includes several key sections, such as:
 - **Summary**: Provides an overview of the sequencing and capture performance, including total reads, total spots, and the percentage of reads mapped to the reference genome.
+
 - **Sequencing Metrics**: Includes metrics related to the sequencing quality, such as the percentage of reads with valid barcodes, the percentage of reads with valid UMIs, and the percentage of reads mapped to the reference genome. 
+
 - **Capture Metrics**: Provides information about the capture performance, including the number of spots detected, the number of genes detected per spot, and the distribution of gene expression across spots.
+
 - **Segmentation Metrics**: Includes metrics related to the segmentation of the tissue, such as the number of segmented cells and the distribution of UMIs per cell and cell sizes.
+
 - **Sample (Metadata)**: Provides additional information about the sample, such as the sample name, the date of processing, and the version of Spaceranger used as well as the version of the reference genome.
+
 - **Analysis (Summary)**: Provides a summary of a very basic default analysis, including the number of clusters identified and the marker genes detected for each cluster.
+
 - **Image QC**: Provides information about the quality of the tissue image.
 
 Not all of these sections are present for all datasets, as some of the metrics are specific to certain types of data (e.g., segmentation metrics are only relevant for datasets that have been segmented).
 
 ## Interpreting QC Metrics
 When interpreting the QC metrics from the Spaceranger report, it is important to consider the following factors:
+
 - **Total Reads**: A higher number of total reads generally indicates better sequencing depth, which can lead to more accurate gene expression quantification. However, it is important to also consider the percentage of reads that are mapped to the reference genome, as a high number of total reads with a low mapping percentage may indicate issues with the sequencing or sample quality.
+
 - **Total Spots/Cells**: The number of spots/cells detected can provide insight into the capture performance. A low number of spots may indicate issues with the capture process, while a very high number of spots or cells may indicate potential issues with background noise or over-segmentation.
+
 - **Percentage of Reads Mapped to Reference Genome**: A high percentage of reads mapped to the reference genome is generally a good indicator of data quality. A low mapping percentage may indicate issues with the sequencing quality, sample quality, or the reference genome used for alignment.
+
 - **Percentage of Reads with Valid Barcodes/UMIs**: A high percentage of reads with valid barcodes and UMIs is important for accurate quantification of gene expression. A low percentage may indicate issues with the sequencing quality or the library preparation process.
+
 - **Number of Genes Detected per Spot/Cell**: A higher number of genes detected per spot/cell can indicate better capture performance and higher data quality. However, it is important to also consider the distribution of gene expression across spots/cells, as a very high number of genes detected in a small number of spots/cells may indicate potential issues with background noise or over-segmentation. Hence, both very low and very high numbers of genes detected per spot/cell can be indicative of potential issues with the data quality.
+
 - **Segmentation Metrics**: For datasets that have been segmented, it is important to consider the number of segmented cells and the distribution of UMIs per cell and cell sizes. A very low number of segmented cells may indicate issues with the segmentation process, while a very high number of segmented cells may indicate potential issues with over-segmentation. Additionally, a very low or very high number of UMIs per cell or very small or large cell sizes may indicate potential issues with the data quality.
+
 - **Image QC**: The quality of the tissue image can also impact the overall data quality. Poor image quality may indicate issues with the tissue processing or imaging, which can affect the accuracy of the spatial gene expression data.
 
 ## Identifying Potential Issues with the Data
 Based on the QC metrics from the Spaceranger report, you can identify potential issues with the data that may need to be addressed before proceeding with downstream analysis. For example:
+
 - If the percentage of reads mapped to the reference genome is low, you may need to investigate potential issues with the sequencing quality, sample quality, or the reference genome used for alignment. This may involve checking the quality of the raw sequencing data, assessing the sample quality (e.g., RNA integrity), or using a different reference genome for alignment.
+
 - If the number of spots/cells detected is very low, you may need to investigate potential issues with the capture process. This may involve checking the quality of the tissue section, assessing the capture performance, or optimizing the capture protocol for future experiments.
+
 - If the percentage of reads with valid barcodes/UMIs is low, you may need to investigate potential issues with the sequencing quality or the library preparation process. This may involve checking the quality of the raw sequencing data, assessing the library preparation process, or optimizing the library preparation protocol for future experiments.
+
 - If the number of genes detected per spot/cell is very low or very high, you may need to investigate potential issues with the capture performance or background noise. This may involve assessing the distribution of gene expression across spots/cells, checking for potential issues with the tissue processing or imaging, or optimizing the capture protocol for future experiments.
+
 - If the segmentation metrics indicate potential issues with the segmentation process, you may need to investigate potential issues with the segmentation algorithm or the quality of the tissue image. This may involve assessing the segmentation results, checking for potential issues with the tissue processing or imaging, or optimizing the segmentation algorithm for future experiments. 
 
 
