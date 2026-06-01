@@ -43,10 +43,12 @@ Download and unzip the folder to your Desktop to follow along with the materials
     "paletteer",
     "Rfast2",
     "Seurat",
+    "hdf5r"
     "bioc::clusterProfiler",
     "bioc::org.Hs.eg.db",
     "bioc::glmGamPoi",
     "bioc::SpatialExperiment",
+    "bioc::SpaNorm",
     "bioc::BiocNeighbors",
     "bioc::ComplexHeatmap",
     "satijalab/seurat-wrappers",
