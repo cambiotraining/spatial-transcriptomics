@@ -1,26 +1,20 @@
 book:
   chapters:
-    - part: "Information"
+    - part: "Detailed Workflow"
       chapters:
-        - materials/00-QualityControl.md
-    - part: "Session 1"
+        - materials/00-QualityControl.qmd
+        - materials/01-LoadingData.qmd
+        - materials/02a-Filtering.qmd
+        - materials/02b-Normalisation.qmd
+        - materials/03-DimensionalityReduction.qmd
+        - materials/04-Clustering.qmd
+        - materials/05-Deconvolution.qmd
+        - materials/06-Visualisation.qmd
+        - materials/07-SpatiallyVariableFeatures.qmd
+        - materials/08-TissueArchitecture.qmd
+        - materials/09-CellCellInteraction.qmd
+    - part: "Case Studies"
       chapters:
-        - materials/01-LoadingData.md
-        - materials/02-Preprocessing.md
-
-       
-    - part: "Session 2"
-      chapters:
-        - materials/03-DimensionalityReduction.md
-        - materials/04-Clustering.md
-        - materials/05-Deconvolution.md
-        - materials/06-Visualisation.md
-        - materials/07-SpatiallyVariableFeatures.md
-        - materials/08-TissueArchitecture.md
-    
-    - part: "Session 3"
-      chapters:
-        - materials/09-CellCellInteraction.md
-        - materials/10-VisiumExample.md
-        - materials/11-XeniumExample.md
-        - materials/12-MerfishExample.md
+        - materials/10-VisiumExample.qmd
+        - materials/11-XeniumExample.qmd
+        - materials/12-MerfishExample.qmd
