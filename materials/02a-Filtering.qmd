@@ -1,10 +1,3 @@
----
-knitr:
-  opts_chunk:
-    fig-width: 10
-    fig-height: 8
----
-
 # QC and Filtering
 
 ```{r}
