@@ -1,6 +1,15 @@
----
-title: Loading Data into Seurat
----
+# Data Import
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+# set the working directory to the course_files folder
+# make sure to run course_files/download_course_files.sh
+knitr::opts_knit$set(root.dir = here::here("course_files"))
+```
 
 ::: {.callout-tip}
 #### Learning Objectives
@@ -13,92 +22,371 @@ title: Loading Data into Seurat
 - Save a Seurat object to disk
 :::
 
-## Loading Visium Data into Seurat
-To load Visium data into Seurat, you can use the `Load10X_Spatial` function. This function reads the Visium data from a specified directory and creates a Seurat object.
-```r
-# Load the Seurat library
+<!--
+Notes for revision:
+
+Some general impressions:
+
+- It seems the main purpose of the chapter is to introduce the read functions from Seurat.
+- It also discusses the use of RDS objects to save progress in the analysis.
+- The chapter is less about the specific biology of each dataset, and more about the mechanics of loading and saving data in Seurat.
+- However, I think a little description (even if very brief) of each dataset would be nice. So we know what to expect and what it is we're looking at when plotting things.
+- Another critical objective is to teach people the structure of the Seurat object and how to explore it. This is a key skill that will be used throughout the course, so we should make sure to explain this well.
+- The chapter would therefore benefit from more explanations of the Seurat object.
+- Perhaps this can start with the V1 dataset, and then spend some time covering the different functions to explore the object and the dataset within it.
+- Then the MerFISH and Xenium datasets can be used as examples to demonstrate the loading and saving of Seurat objects, without going into too much detail about the specific datasets.
+- In fact, perhaps these datasets could be used as exercises for the reader to practice loading and exploring Seurat objects, rather than just being shown as examples.
+- Minor point: might be a good idea to name the variables in a more meaningful way to encourage best-practices. For example, instead of `visium`, we could name it `visium_brain` or something similar to indicate what the dataset is.
+-->
+
+## Package Ecosystems
+
+There are several software packages for the analysis of spatial transcriptomics data.
+Broadly speaking, there are three package ecosystems, each using their own data structure.
+
+- **Seurat (R)**: A popular package suite for the analysis of single-cell, spatial and multi-omic data.
+  This package can be thought of as a "all-in-one" solution for the analysis of these types of data.
+  Seurat uses the `Seurat` object, detailed in this section.
+
+- **Bioconductor (R)**: Rather than a single package, the Bioconductor project provides the [`SpatialExperiment` object](https://bioconductor.org/packages//release/bioc/html/SpatialExperiment.html), upon which developers write packages for analysing spatial data.
+  This can be thought as an "ecosystem" of packages, all working in an inter-related manner as they share the same underlying data object.
+  The `SpatialExperiment` object is also compatible with the `SingleCellExperiment` object, meaning it can be used with packages designed for single-cell and multi-omic data.
+  The [Orchestrating Spatial Transcriptomics Analysis with Bioconductor (OSTA)](https://bioconductor.org/books/release/OSTA/) book provides a detailed resource for the analysis of spatial data using this ecosystem of packages.
+
+- **scverse (Python)**: Similarly to Bioconductor, the [scverse project](https://scverse.org/) aims at bringing together several Python packages for the analysis of single-cell, spatial and multi-omic data.
+  In particular, the [`squidpy` package](https://squidpy.readthedocs.io/en/stable/) provides spatial analysis functionality, using the `AnnData` object as the underlying data structure.
+  More recent developments led to the develpment of the [`SpatialData` object and package](https://spatialdata.scverse.org/en/latest/index.html), which `squipy` can also use.
+
+You may wonder which of these package ecosystems you should choose.
+There are a few considerations here:
+
+- All the packages essentially provide the same basic functionality for data processing (e.g. filtering, clustering, dimensionality reduction).
+- Specific algorithms may be developed for one ecosystem, but not the others, depending on the developers themselves.
+  For example, the [SpaNorm package](https://bhuvad.github.io/SpaNorm/) for data normalisation works on `SingleCellExperiment` objects (Bioconductor ecosystem) but is not implemented for `Seurat` or `AnnData`/`SpatialData`.
+- Even for common tasks, the computational performance may differ between ecosystems.
+  Anedoctally, our experience tells us that users often find Python packages perform better with very large data.
+
+So, the answer isn't straightforward, as you may sometimes need to switch between them.
+Our recommendation would be to choose one of them as your "base" ecosystem, to become well versed and familiar with.
+But be prepared to switch between them in some circumstances.
+
+In these materials we use **Seurat** for our analysis, for no other reason than this is the package that some of the authors are more familiar with.
+But conceptually, similar steps can be achieved with the other packages as well.
+
+::: {.callout-note}
+#### Object format conversion
+
+When switching between package ecosystems, you can convert between objects either by:
+
+- Manually creating the new object using components from the old object.
+  For example, take the raw matrix of counts and metadata from a `Seurat` object to create a `SingleCellExperiment` object.
+  While flexible, this approach requires familiarity with the object you want to convert into.
+- Use a dedicated package, such as the [`anndataR` R package](https://bioconductor.org/packages/3.23/bioc/html/anndataR.html).
+
+Note that as the object definitions sometimes change (in particular for Seurat), these object-conversion packages may sometimes break.
+So, always make sure to double-check the data looks as you would expect after the conversion.
+:::
+
+## Loading Data
+
+To **load Visium data into Seurat**, you can use the `Load10X_Spatial()` function.
+This function takes as input:
+
+- The Space Ranger output directory, which should contain a `spatial` directory within it with the image data
+- The respective `filtered_feature_bc_matrix.h5` file (usually within the same directory as above), which includes the processed matrix of genes x spots from Space Ranger
+
+```{r}
+#| label: load-visium-data
+
+# Load libraries
 library(Seurat)
-# We will also use the `paletteer` package for color palettes
-library(paletteer)
+library(paletteer) # for colour palettes
+library(ggplot2)
+
 # Load the spatial transcriptomics data
-visium <- Load10X_Spatial("data/mouse_sagittal", filename = "V1_Mouse_Brain_Sagittal_Anterior_Section_2_filtered_feature_bc_matrix.h5")
+visium <- Load10X_Spatial(
+  "data/mouse_sagittal_visium_v1",
+  filename = "V1_Mouse_Brain_Sagittal_Anterior_Section_2_filtered_feature_bc_matrix.h5"
+)
+
+# Inspect the class of the object
+class(visium)
 ```
-This will create a Seurat object containing the spatial transcriptomics data, which includes gene expression data, spatial coordinates, an image of the tissue slide and other metadata.
 
-There are other functions available in Seurat for loading different types of spatial transcriptomics data, such as `LoadXenium` for 10X Genomics Xenium data or `LoadVizgen` for loading ViZgen MerFISH data.
+This will create a `Seurat` object containing the spatial transcriptomics data, which includes gene expression data, spatial coordinates, an image of the tissue slide and other metadata.
 
-## Understanding the Seurat Object
+::: {.callout-tip}
+#### Loading data from other spatial technologies
+
+There are other functions available in Seurat for loading different types of spatial transcriptomics data, such as `LoadXenium()` for 10X Genomics Xenium data or `LoadVizgen()` for loading ViZgen MerFISH data.
+:::
+
+## The `Seurat` Object
+
 The Seurat object is a complex data structure that contains multiple components, including:
 
-- `assays`: Contains the gene expression data and other assays.
-- `meta.data`: Contains metadata for each cell or spot, such as quality control metrics and experimental conditions.
+- `assays`: Contains the gene expression data as a matrix of genes (rows) by spots/cells (columns).
+  - Each assay may contain different layers (matrices), such as raw and normalised counts.
+  - Multiple assays may also be present, for example to store different types of data (e.g. gene expression, protein expression) or transformations over the original data.
+- `meta.data`: Contains metadata for each spot/cell, such as quality control metrics and experimental conditions.
 - `reductions`: Contains dimensionality reduction results, such as PCA or UMAP.
 - `images`: Contains images associated with the spatial transcriptomics data.
 - `graphs`: Contains graph-based representations of the data, such as nearest neighbor graphs.
 - `tools`: Contains various tools and methods used for analysis.
 
-You can explore the Seurat object using various functions, such as `str()` and the RStudio-specific function `View()`, to understand its structure and contents.
+The Seurat manual provides a [detailed list of accessors](https://satijalab.org/seurat/articles/essential_commands) for the different components of the object.
+We will also explore several of these as we go through our analysis.
+For now, let's focus on the first two.
 
-```r
+### Assays
+
+Seurat uses the concept of a "**Default Assay**" to denote the **active assay** that functions use when performing their operations.
+We can list all the assays present in an object with:
+
+```{r}
+#| label: list-assays
+
+# List the assays present in the object
+Assays(visium)
+```
+
+At the moment we only have one assay in the object, but later we will see how further assays get added as we progress with our analysis.
+We can also use the `DefaultAssay()` function to check which assay is currently active.
+The default assay in Visium data is called "Spatial", and contains the raw counts.
+
+Assays can be accessed by name using a double-bracked notation `[["AssayName"]]`:
+
+```{r}
+#| label: access-assay
+
+# Access the default assay
+visium[["Spatial"]]
+```
+
+We can see that in this case, we have a single layer called `counts`.
+This is the matrix of raw counts, which we can further access like so:
+
+```{r}
+#| label: access-counts
+#| eval: false
+
+# Access the counts matrix
+visium[["Spatial"]]$counts
+```
+
+```{r}
+#| label: view-counts
+#| include: false
+
+visium[["Spatial"]]$counts[1:10, 1:5]
+```
+
+This is stored as a **sparse matrix**, which is an efficient way of storing large matrices with lots of zeros.
+The zeros are displayed as `.` in the matrix output.
+From this quick glance at the data we can see that most of the cells are zeros, which is typical of these data.
+
+### Metadata
+
+An crucial part of the object is the metadata about our spots/cells.
+This can be accessed using empty double square brackets `[[]]` with our object:
+
+```{r}
+#| label: access-metadata
+
+# Access the metadata data.frame
+head(visium[[]])
+```
+
+This is stored as a regular R `data.frame` and by default contains:
+
+- Row names give an identifier for each spot/cell
+- `orig.ident` specifies the origin of the data, if spots/cells from multiple datasets are present in the same object.
+  By default this is simply called "SeuratProject".
+- `nCount_Spatial` and `nFeature_Spatial` are the total counts and detected genes in each spot.
+  We will come back to these in a later section.
+
+You can access individual columns from the metadata using the `$` accessor, for example:
+
+```{r}
+#| label: access-metadata-column
+
+# Get a numeric summary of the total spot counts
+summary(visium$nCount_Spatial)
+```
+
+Similarly, you can add new columns to the metadata using the `<-` assignment operator.
+For example:
+
+```{r}
+#| label: add-metadata-column
+
+# Add a new column indicating whether the total counts are greater than 1000
+visium$nCountGreater1000 <- visium$nCount_Spatial > 1000
+```
+
+::: {.callout-tip}
+#### Full object structure
+
+You can use the `str()` function to expose the full structure and contents of the `Seurat` object:
+
+```{r}
+#| label: explore-seurat-object
+#| results: "hide"
+
 # Explore the Seurat object
 str(visium)
-View(visium)
+```
+:::
+
+### Images
+
+You can list the images present in your object with:
+
+```{r}
+#| label: list-images
+
+# List the images present in the object
+Images(visium)
 ```
 
-## Exploring the Data
-You can use `ImageDimPlot` to visualize the spatial distribution of cells or spots in the tissue slide. This function allows you to plot the spatial coordinates of the cells or spots on the tissue image. Using `SpatialFeaturePlot`, you can visualize specific features, such as the number of transcripts per spot or the expression of specific genes.
+By default, the image data is called "slice1", but this may differ for other datasets.
+You can access the image-related data using the same double-bracket notation as for assays:
 
-```r
-# Visualize the transcript locations on the tissue slide
-ImageDimPlot(visium)
+```{r}
+#| label: access-image
+
+# Access the image data
+visium[["slice1"]]
+```
+
+This returns an object of class `VisiumV2` which contains the image data and associated metadata.
+
+We won't go into further details about this object for now, as we usually don't need to interact with it directly.
+Rather, Seurat provides functions that use the image data for visualisation and analysis.
+
+## Data Visualisation
+
+Seurat provides several functions to help visualising the spatial distribution of spots/cells and their associated features on the tissue slide.
+
+The main functions we can use for this are:
+
+- `SpatialFeaturePlot()` is used for overlaying continuous data on top of a spatial image.
+  The data can be the expression of a feature (gene) or a column from the metadata.
+- `SpatialDimPlot()` is similar to the previous one, but for discrete (categorical) variables.
+- `ImageFeaturePlot()` and `ImageDimPlot()` are equivalent to the previous two, but only display the spots, without the underlying image.
+
+Here are some examples using these functions in our object:
+
+```{r}
+#| label: visualize-visium-data
+
 # Visualize the number of transcripts per spot
 SpatialFeaturePlot(visium, features = "nCount_Spatial")
-```   
 
-## Loading an Existing Seurat Object
-If you have an existing Seurat object saved to disk, you can load it using the `readRDS()` function. This is useful for continuing analysis from a previous session or sharing results with collaborators. We are loading a MERFISH dataset as an example. It already includes some annotations like tissue types and cluster identities.
-```r
-# Load an existing Seurat object
-merfish <- readRDS("data/human_heart_merfish/overall_merfish.rds")
-# Visualize the structure of the heart in the MERFISH data
-DimPlot(merfish, reduction = "spatial", group.by = "communities", cols = paletteer_d("ggthemes::Tableau_20"))
-# Free some memory by removing the merfish object
-rm(merfish)
-``` 
+# Visualise the yes/no variable we created earlier
+SpatialDimPlot(visium, group.by = "nCountGreater1000")
 
-## Saving a Seurat Object
-You can save a Seurat object to disk using the `saveRDS()` function. This allows you to preserve your analysis results and share them with others.
-```r
-# Save the Seurat object to disk
-SaveSeuratRds(visium, file = "data/mouse_sagittal.rds")
+# Visualize the transcript locations on the tissue slide
+# size controls the size of the points (0.5 by default)
+ImageDimPlot(visium, group.by = "nCountGreater1000", size = 1.5)
+
+# Total counts again
+ImageFeaturePlot(visium, features = "nCount_Spatial", size = 1.5)
 ```
+
+Behind the scenes, these functions use `ggplot2` to produce the plots.
+This means, we can add `ggplot2`-compatible functions on top of them.
+For example, we can add a title to one of the plots:
+
+```{r}
+#| label: customise-plot
+#| eval: false
+
+# Add tittle to the plot
+SpatialFeaturePlot(visium, features = "nCount_Spatial") +
+  ggtitle("Total number of counts per spot")
+```
+
+## Saving and loading Seurat objects
+
+As spatial analysis can be computationally demanding, it is a good idea to save our objects at intermediate steps of the workflow, and re-read them later on to continue our analysis.
+
+To achieve this we can use the standard R functions `saveRDS()` and `readRDS()`, which save and load R objects in a binary format.
+
+```{r}
+#| label: save-visium-object
+#| eval: false
+
+# Save the Seurat object to disk
+saveRDS(visium, file = "results/visium_brain.rds")
+```
+
+To re-read the object later on, we can use:
+
+```{r}
+#| label: load-visium-object
+#| eval: false
+
+# Load the Seurat object from disk
+visium <- readRDS("results/visium_brain.rds")
+```
+
+<!--
+Hugo note: I have for now commented this out, to keep things simple and focused on Visium, which forms the main component of the detailed workflow chapters. Perhaps these details can be added to the case study later on?
 
 ## Loading Xenium Data into Seurat
-If you are working with 10X Genomics Xenium data, you can use the `LoadXenium` function to load the data into a Seurat object. This function is specifically designed to handle the unique structure of Xenium data, which includes spatial transcriptomics data with high-resolution spatial coordinates and associated images.
 
-We will use another dataset from the 10X examples. The data is available on the 10X website and has been downloaded for you in the course materials at `data/human_melanoma_xenium`.
+If you are working with 10X Genomics Xenium data, you can use the `LoadXenium()` function to load the data into a Seurat object.
+This function is specifically designed to handle the unique structure of Xenium data, which includes spatial transcriptomics data with high-resolution spatial coordinates and associated images.
 
-```r
+::: {.callout-warning}
+#### Xenium data is large!
+
+Xenium datasets can be quite large, so make sure you have enough memory available to load the data.
+If you encounter memory issues, consider using a machine with more RAM or using a subset of the data for analysis.
+:::
+
+We will use another dataset from the 10X examples.
+The data is available on the 10X website and has been downloaded for you in the course materials at `data/human_melanoma_xenium`.
+
+```{r}
+#| label: load-xenium-data
+#| eval: false
+
+# load the xenium data - takes a while to load
 xenium <- LoadXenium("data/human_melanoma_xenium", fov = "fov")
 ```
-The FOV (Field of View) parameter allows you to specify which field of view to load if the dataset contains multiple fields. In this case, we are loading the default field of view.
- 
-To visualize the Xenium data we will use the `ImageDimPlot` function to plot the spatial distribution of cells or spots in the tissue slide. We can also visualize the number of features measuresd in each location using `ImageFeaturePlot`. This shows that while the spatial resolution is very high, the number of features measured per location is quite low compared to other spatial transcriptomics technologies. In this case only 382 genes were measured.
 
-```r
+The FOV (Field of View) parameter allows you to specify which field of view to load if the dataset contains multiple fields.
+In this case, we are loading the default field of view.
+
+To visualize the Xenium data we will use the `ImageDimPlot()` function to plot the spatial distribution of cells or spots in the tissue slide.
+We can also visualize the number of features measured in each location using `ImageFeaturePlot()`.
+This shows that while the spatial resolution is very high, the number of features measured per location is quite low compared to other spatial transcriptomics technologies.
+In this case only 382 genes were measured.
+
+```{r}
+#| label: visualize-xenium-data
+#| eval: false
+
+# Visualise the dots representing the locations of the transcripts on the tissue slide
 ImageDimPlot(xenium)
-# Visualize the transcript density on the tissue slide  
-ImageFeaturePlot(xenium, features = "nFeature_Xenium", cols = paletteer_c("grDevices::Blue-Red 3", 150))
-rm(xenium)  # Free some memory by removing the xenium object
+
+# Visualize the transcript density on the tissue slide
+ImageFeaturePlot(
+  xenium,
+  features = "nFeature_Xenium",
+  cols = paletteer_c("grDevices::Blue-Red 3", 150)
+)
 ```
 
+-->
 
-## Conclusion
-Loading data into Seurat is a straightforward process that allows you to work with spatial transcriptomics data effectively. By understanding the structure of the Seurat object and using its functions, you can explore and analyze your data efficiently. It's always a good practice to save your Seurat objects after significant analysis steps to avoid losing your work and to facilitate collaboration with others.
+## Summary
 
-## Summary  
 ::: {.callout-tip}
-#### Key Points   
+#### Key Points
+
 - Use `Load10X_Spatial` to load Visium data into Seurat.
 - Understand the structure of the Seurat object, including assays, metadata, reductions, images, graphs, and tools.
 - Explore the data visually using functions like `ImageDimPlot` and `SpatialFeaturePlot`.
