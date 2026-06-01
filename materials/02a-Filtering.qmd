@@ -1,0 +1,478 @@
+# QC and Filtering
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+# set the working directory to the course_files folder
+# make sure to run course_files/download_course_files.sh
+knitr::opts_knit$set(root.dir = here::here("course_files"))
+```
+
+::: {.callout-tip}
+#### Learning Objectives
+
+- TODO
+:::
+
+## Introduction
+
+Preprocessing spatial transcriptomics data is a crucial step in ensuring the quality and reliability of the analysis.
+We will work with a Visium mouse brain dataset [from 10x Genomics](https://www.10xgenomics.com/datasets/mouse-brain-serial-section-2-sagittal-anterior-1-standard).
+
+We start by loading the necessary libraries and read the data into a Seurat object.
+
+```{r}
+#| label: load-visium-data
+
+# Load libraries
+library(Seurat) # single-cell and spatial analysis toolkit
+library(sparseMatrixStats)
+library(paletteer) # colour palettes
+library(ggplot2) # plotting
+library(patchwork) # combining plots
+
+# Load the spatial transcriptomics data
+visium <- Load10X_Spatial(
+  "data/mouse_sagittal_visium_v1",
+  filename = "V1_Mouse_Brain_Sagittal_Anterior_Section_2_filtered_feature_bc_matrix.h5"
+)
+```
+
+Before we start performing quality control, it is important to **understand the tissue(s) you are working with**.
+For example, what are the expected cell types or regions captured in our slice?
+
+10x describes this mouse brain dataset as:
+
+> Tissue sections of 10 µm thickness from a sagittal slice of the anterior
+
+We can visualise the raw image to get a sense of what regions of the brain we captured:
+
+```{r}
+#| label: plot-histological-image
+
+# Make spots invisible and plot the histological image
+SpatialPlot(
+  visium,
+  alpha = 0, # make spots invisible
+  image.alpha = 1,
+  crop = FALSE
+) +
+  theme(legend.position = "none")
+```
+
+We could compare this image with one of the slices from the [mouse brain atlas from the Allen Institute for Brain Science](https://mouse.brain-map.org/experiment/thumbnails/100042147?image_type=atlas).
+
+Alternatively, here is a simplified diagram of the sagitall view of the mouse brain:
+
+![Image source: [bioRender](https://www.biorender.com/template/mouse-brain-anatomy-sagittal-view)](https://cdn.prod.website-files.com/621e95f9ac30687a56e4297e/64a8d42517d0ad175c9ae32c_V2_1624981248450_06f0410a-bd7c-454e-a9ae-c73a1e2e52be.png)
+
+If compare our slice with this diagram or the atlas linked above, we can conclude that we are likely imaging:
+
+- The main olfactory bulb, appearing as a distinct circular-looking "bulge" on the left
+- The cerebral cortex
+- The anterior olfactory nucleus
+- The ventral striatum
+- The caudate putamen
+- The basal forebrain
+- Maybe also some of the hippocampus
+
+Note that it is hard (at least for a non-expert eye) to identify these layers in the histological image.
+But at least we have an idea of what kinds of cell types and clusterings we might expect to see in our data.
+
+Critically for the topic at hand, we can see whether there are systematic biases in quality control metrics and filtering across these expected regions of our tissue.
+
+From our raw image, we may also look for signs of:
+
+- Tissue tearing or folding
+- Areas with low cell density
+- Areas with high levels of debris or contamination
+
+These may correlate with low-quality spots that get removed later on during our filtering.
+
+## QC Metrics
+
+Common quality control metrics include:
+
+- **Library size:** The total number of counts per spot.
+- **Detected genes:** The number of unique genes per spot, i.e. those with at least 1 count.
+- **Mitochondrial percentage:** The percentage of counts assigned to mitochondrial genes.
+  A high fraction of mitochondrial counts may indicate tissue damage.
+  The idea is that cytoplasmic RNA leaks out of ruptured/perforated cells, but mitochondria are large enough to remain within the damaged cells and their RNA is somewhat protected by the mitochondrial membrane.
+  This therefore leads to a relative enrichment of mitochondrial genes relative to the rest.
+
+The library size and number of detected genes are calculated by Space Ranger, so we can see them already present in our Seurat object's metadata:
+
+```{r}
+#| label: view-metadata
+
+# Fetch the metadata and look at the first few rows
+head(visium[[]])
+```
+
+For completeness, we show how to calculate these two metrics from the raw counts, as this is useful to know how to do in case you are working with a dataset that does not have these metrics pre-calculated.
+
+```{r}
+#| label: qc-metrics-basic
+
+# library size
+visium[["nCount_Spatial"]] <- Matrix::colSums(visium[["Spatial"]]$counts)
+
+# number of detected genes
+visium[["nFeature_Spatial"]] <- Matrix::colSums(visium[["Spatial"]]$counts > 0)
+```
+
+Note that you could use a more stringent threshold for what you consider a "detected gene" to be.
+Here, we're simply counting any gene with at least 1 count (`> 0`), but you could use a higher threshold (e.g. `> 2` for at least 3 counts).
+
+To calculate the mitochondrial percentage, we need to either have a list of mitochondrial gene names, or use a pattern that matches their names.
+In our case, mitochondrial genes are prefixed with "mt-", so we can use this pattern to identify them using the `PercentageFeatureSet()` function.
+
+```{r}
+#| label: qc-metrics-mito
+
+# add mitochondrial percentage to metadata
+visium[["percentMt_Spatial"]] <- PercentageFeatureSet(
+  visium,
+  assay = "Spatial",
+  pattern = "^mt-" # the '^' indicates we want to match the start of the string
+)
+```
+
+This function can be used to calculate the percentage of any set of genes, not just mitochondrial genes.
+For example, you could calculate the percentage of ribosomal genes, or chloroplast genes (in plant datasets), or any other set of genes that may be relevant for your analysis.
+
+We can see these have been added to our metadata:
+
+```{r}
+#| label: view-qc-metrics
+
+# Confirm that the new QC metrics have been added to metadata
+head(visium[[]])
+```
+
+## Visualising QC Metrics
+
+Now that we have calculated our QC metrics, we can look at their distributions to get a sense of the range of values present in our data.
+
+The `VlnPlot()` function from Seurat allows us to do this quickly:
+
+```{r}
+#| label: filter-low-quality-cells
+#| warning: false
+
+# Visualize QC metrics
+VlnPlot(
+  visium,
+  features = c("nCount_Spatial", "nFeature_Spatial", "percentMt_Spatial")
+)
+```
+
+We can also get a quick summary of their averages and ranges:
+
+```{r}
+#| label: qc-metric-summary
+
+# Summary of QC metrics
+summary(visium[[c("nCount_Spatial", "nFeature_Spatial", "percentMt_Spatial")]])
+```
+
+From this quick exploration, we can see:
+
+- Some spots have very low total counts and detected genes, relative to the range observed across spots.
+- Several spots have a high fraction of mitochondrial genes, suggesting potential issues with tissue damage and/or quality.
+
+The library size and number of unique genes are often correlated.
+This makes sense, as our ability to detect genes should increase the more we sequence a spot:
+
+```{r}
+#| label: ncount-vs-detected
+
+plot(visium$nCount_Spatial, visium$nFeature_Spatial)
+```
+
+Spots with a low library size are also likely to have very low number of detected genes.
+
+Cells with unusually high numbers of detected genes may also be indicative of doublets or multiplets, which can be filtered out.
+It is also worth noting that the expected range for the number of detected genes will depend on the specific tissue, experimental conditions and especially the species and technology used.
+
+We can also visualise these metrics as a spatial plot:
+
+```{r}
+#| label: spatial-qc-metrics
+
+# Visualize QC metrics on spatial plot
+SpatialPlot(
+  visium,
+  features = c("nCount_Spatial", "nFeature_Spatial", "percentMt_Spatial"),
+  ncol = 2
+)
+```
+
+This reveals some patterns of variation across our tissue:
+
+- Some areas with high mitochondrial percentage (in the periphery) also have low total counts, which may suggest that these are low-quality spots with damaged tissue.
+- The pattern of total counts and number of detected genes are correlated.
+  This might be expected, as the more counts we have, the higher the chance is of detecting a gene.
+- In the olfactory bulb there are higher counts and detected genes in the middle of the tissue, compared to the outside.
+  This may be a technical artefact, but it could also be biological.
+  For example, the brain atlas suggests there may be some fiber tracts in this region, which may explain this difference.
+- There is a clear anti-correlation between the number of detected genes and the percentage of mitochondrial genes in the same olfactory bulb region.
+  Is this an artefact of the data, or is it biologically meaningful?
+
+We're not experts in brain biology, so we can't say for sure whether these patterns are technical artefacts or biologically meaningful.
+However, this highlights the importance of visualising these QC metrics in the context of the tissue, as this can help us identify potential issues with the data and make informed decisions about filtering and downstream analyses.
+
+One thing is clear: filtering will result in some biases in the spatial distribution of our data.
+This is because we are removing low-quality cells, which are not randomly distributed across the tissue, but rather tend to be located in specific regions (e.g. the periphery of the tissue).
+
+## Defining Filtering Thresholds
+
+Unfortunately, there are no definite rules to define filtering thresholds.
+Broadly, there are currently two approaches can be used:
+
+- **Global thresholds:** Apply the same threshold across the entire dataset, regardless of the spatial context.
+  You can pick these thresholds based on the distributions explored earlier.
+  For example:
+  - Remove cells with less than 1000 counts, less than 500 detected genes and more than 30% mitochondrial genes.
+  - Remove cells below the 1st percentile of the distribution for total counts and number of detected genes, as well as those above the 99th percentile for mitochondrial genes.
+- **Spatially-aware thresholds:** These methods calculate QC metrics taking into consideration the local variation in the tissue.
+
+### Global Threshold
+
+When choosing a threshold, it's always a good idea to visualise them next to the distribution of the respective metric, to see how many cells would be removed and where they are located in the distribution.
+
+You can either hand-pick a threshold, or use a quantile of the distribution for the respective metric.
+Below we show some example thresholds based on hand-picked cutoffs (red lines) and distributional quantile thresholds (blue lines), overlaid on histograms for each metric.
+
+```{r}
+#| label: define-thresholds
+
+# set up a 3x1 plotting area
+par(mfrow = c(3, 1))
+
+# total count thresholds
+hist(
+  visium$nCount_Spatial,
+  breaks = 50,
+  main = "Distribution of total counts",
+  xlab = "Total counts"
+)
+abline(v = 1000, col = "red", lwd = 2)
+abline(v = quantile(visium$nCount_Spatial, 0.01), col = "blue", lwd = 2)
+
+# number of detected genes thresholds
+hist(
+  visium$nFeature_Spatial,
+  breaks = 50,
+  main = "Distribution of detected genes",
+  xlab = "Number of detected genes"
+)
+abline(v = 500, col = "red", lwd = 2)
+abline(v = quantile(visium$nFeature_Spatial, 0.01), col = "blue", lwd = 2)
+
+# percentage of mitochondrial genes thresholds
+hist(
+  visium$percentMt_Spatial,
+  breaks = 50,
+  main = "Distribution of mitochondrial percentage",
+  xlab = "Percentage of mitochondrial genes"
+)
+abline(v = 30, col = "red", lwd = 2)
+abline(v = quantile(visium$percentMt_Spatial, 0.99), col = "blue", lwd = 2)
+```
+
+Which of these is the "correct" filtering threshold?
+Unfortunately, there is no right answer to this question.
+However, before we choose and apply any filters, we should **visualise which spots would be removed by these filters and where they are located**.
+
+Let's first add some columns to our metadata to indicate which cells would be filtered out based on the different thresholds we defined above.
+
+```{r}
+#| label: add-filtered-columns
+
+# add indicator columns for each filter
+visium[["nCountFiltered"]] <- visium$nCount_Spatial <= 1000
+visium[["percentMtFiltered"]] <- visium$percentMt_Spatial >= 30
+visium[["nFeatureFiltered"]] <- visium$nFeature_Spatial <= 500
+
+# also add a combined filter column
+visium[["combinedFiltered"]] <- visium$nCountFiltered |
+  visium$percentMtFiltered |
+  visium$nFeatureFiltered
+
+# this adds TRUE/FALSE columns to metadata
+head(visium[[]])
+```
+
+We can now visualise each of these in the context of the tissue to see where the low-quality spots are located:
+
+```{r}
+#| label: visualize-filtered-cells
+
+SpatialPlot(
+  visium,
+  group.by = c(
+    "nCountFiltered",
+    "percentMtFiltered",
+    "nFeatureFiltered",
+    "combinedFiltered"
+  ),
+  cols = c("lightgrey", "red"),
+  ncol = 2
+)
+```
+
+We can also tabulate the number of cells that would be removed by each filter:
+
+```{r}
+#| label: tabulate-filtered-cells
+
+# tabulate number of cells filtered by each metric
+table(visium$nCountFiltered)
+table(visium$percentMtFiltered)
+table(visium$nFeatureFiltered)
+```
+
+We can see that most spots will be removed due to a high percentage of mitochondrial genes, with only `r sum(visium$nCountFiltered | visium$nFeatureFiltered)` being removed due to low total counts or low number of detected genes.
+
+We can clearly see a pattern of low-quality spots concentrated around particular regions, which we already suspected from our earlier exploratory analysis.
+
+### Spatially-aware Thresholds
+
+Currently, there are not many methods available for this, but one example is [SpotSweeper](https://mictott.github.io/SpotSweeper/).
+
+Unfortunately, this method is not yet compatible with Seurat objects, but it may be worth keeping an eye on its development (track the current GitHub issue [here](https://github.com/MicTott/SpotSweeper/issues/25)).
+
+For this reason, we won't detail this method further, but please revisit these materials as we may include something here in the future.
+
+## Applying Filters
+
+Once you have defined your filtering thresholds, you can apply them to your Seurat object to remove low-quality spots.
+
+We can use the `subset()` function with a logical condition to filter out the spots that do not meet our quality criteria.
+
+```{r}
+#| label: apply-filters
+
+# Apply combined filter to subset the Seurat object
+visium <- subset(
+  visium,
+  subset = nCount_Spatial >= 1000 &
+    nFeature_Spatial >= 500 &
+    percentMt_Spatial <= 30
+)
+```
+
+In the code above we set our conditions as the opposite of the filter columns we created earlier, to keep only the high-quality spots.
+
+We could have also used the `combinedFiltered` column we created earlier, but this would have required us to negate the condition, as we had `TRUE` for bad-quality spots, and `FALSE` for good-quality spots.
+You can negate a logical vector in R by prepending with with `!`, so the following code would retain the good-quality spots:
+
+```{r}
+#| label: apply-combined-filter
+#| eval: false
+
+# Apply filter using the combinedFiltered column
+visium <- subset(visium, subset = !combinedFiltered)
+```
+
+After this step we are left with `r ncol(visium)` spots, which we use for downstream analyses.
+
+## Exporting Filtered Data
+
+As usual, after each step of your analysis, it's a good idea to save your Seurat object to disk, so you can easily load it later without having to repeat these steps:
+
+```{r}
+#| label: save
+#| eval: false
+
+# Save the filtered Seurat object
+saveRDS(visium, file = "results/mouse_brain_filtered.rds")
+```
+
+```{r}
+#| label: save-participant-data
+#| include: false
+
+# Save the filtered Seurat object
+saveRDS(visium, file = "precomputed/mouse_brain_filtered.rds")
+```
+
+## Exercises
+
+:::{.callout-exercise}
+
+Although the spot library size (i.e. total counts) and number of unique genes are the most standard QC metrics used, we can explore other metrics.
+
+For example, we could investigate if there are outlier spots in terms of the _variation_ in counts across genes.
+
+Add three additional columns to your metadata:
+
+- `countMean` with the mean counts per spot
+- `countVar` with the variance of counts per spot
+- `countCV` with the coefficient of variation per spot, calculated as variance / mean
+
+Then, plot each of these metrics in a spatial plot.
+What do you conclude?
+
+:::{.callout-answer}
+
+We can use the `colMeans` and `colVars` functions to calculate the first two metrics.
+We can then use the existing columns to calculate the third.
+
+```{r}
+
+# Add new metrics to metadata
+visium$countMean <- colMeans(visium[["Spatial"]]$counts)
+visium$countVar <- colVars(visium[["Spatial"]]$counts)
+visium$countCV <- visium$countVar / visium$countMean
+```
+
+We can then use the `SpatialFeaturePlot()` function to visualise these metrics:
+
+```{r}
+SpatialFeaturePlot(visium, "countMean")
+SpatialFeaturePlot(visium, "countVar")
+SpatialFeaturePlot(visium, "countCV")
+```
+
+We conclude:
+
+- The mean is well correlated with the library size, which is perhaps expected. Therefore, the spatial pattern is very similar to what was observed when plotting `nCount_Spatial`.
+- The variance and CV show a few outlier spots, which had not been flaged by our previous QC exploration.
+
+We could further explore the coefficient of variation metric, for example, look at its distribution and see which spots may be filtered out if we chose to filter extreme outliers based on this metric.
+
+```{r}
+# 99th percentile of the coefficient of variation
+quantile(visium$countCV, 0.99)
+
+# histogram of the coefficient of variation with a vertical line at some potential thresholds
+hist(visium$countCV, breaks = 50, main = "Distribution of coefficient of variation", xlab = "Coefficient of variation")
+abline(v = quantile(visium$countCV, 0.99), col = "red", lwd = 2)
+abline(v = 1000)
+
+# highlight the outlier spots on a spatial plot
+visium$cvFiltered <- visium$countCV >= 1000
+SpatialDimPlot(visium, group.by = "cvFiltered", cols = c("lightgrey", "red"))
+```
+
+We can see a few more spots would be filtered out if we chose to filter based on the coefficient of variation, compared to our previous filters.
+In this case, we chose CV >= 1000, meaning the variance in counts across genes is at least 1000 times higher than the respective mean count for that spot.
+This is an extreme fluctuation of expression across genes, which may be indicative of low-quality spots, but it could also be biologically meaningful.
+
+As usual, knowing something about the biology of the tissue could help us decide whether to apply this filter or not.
+
+:::
+:::
+
+## Summary
+
+::: {.callout-tip}
+#### Key Points
+
+- TODO
+:::
