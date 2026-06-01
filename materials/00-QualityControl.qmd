@@ -1,137 +1,138 @@
 # Space Ranger Report
 
 ::: {.callout-tip}
-#### Learning Objectives
+### Learning Objectives
 
-- Understand Space Ranger output and the quality control metrics it provides
-- Learn how to interpret the QC metrics to assess the quality of the data
-- Identify potential issues with the data based on the QC metrics
+- Describe the main inputs, processing steps and outputs of the Space Ranger workflow for Visium data.
+- Recognise the key sections of a Space Ranger web summary report and the purpose of each section.
+- Interpret core QC metrics in the Space Ranger report.
+- Diagnose common technical issues from QC patterns and choose appropriate follow-up checks.
 :::
-
-<!--
-Some general thoughts for revision:
-
-- We often qualitatively mention "low" or "high" or "potential issues" without providing specific thresholds or criteria for what constitutes "low", "high", or "potential issues".
-- It might be difficult to provide specific thresholds that apply universally, as these can vary depending on the specific dataset, experimental design, and research question.
-- However, it would be good to provide some general guidelines or examples of what might be considered an issue.
--->
 
 ## The Space Ranger Workflow
 
-**Space Ranger** is an analysis pipeline developed by 10x Genomics for processing spatial transcriptomics data generated using their Visium platform.
-It is available from the [10x Genomics website](https://www.10xgenomics.com/support/software/space-ranger/latest), with a detailed manual for how to use it and documentation on the various steps implemented in their pipeline.
+**Space Ranger** is the 10x Genomics workflow for processing Visium spatial transcriptomics data.
+You can find installation and run instructions in the [10x Genomics documentation](https://www.10xgenomics.com/support/software/space-ranger/latest).
 
-Briefly, Space Ranger **processes both the sequencing and imaging data** generated from a Visium experiment.
-The pipeline takes raw FASTQ files, a reference transcriptome, high-resolution tissue images, and slide metadata as input.
-Using these data, it identifies the capture area on the slide, detects tissue regions, and infers the spatial coordinate system needed to map gene expression back to its original location within the tissue section.
+Space Ranger simultaneously processes sequencing and imaging data from the same sample.
+Typical inputs include FASTQ files, a reference transcriptome, high-resolution tissue images, and slide metadata.
+The pipeline then maps gene expression back to spatial coordinates on the tissue section.
 
-The sequencing reads and image data are processed in parallel by the pipeline:
+The workflow has two linked analysis pipelines:
 
-- Reads are trimmed, aligned to the reference and corrected for barcode and UMI errors.
-- The images are processed using algorithms that identify fiducial markers (the positional landmarks on Visium slides), detect tissue boundaries and (if applicable) align microscope and CytAssist images.
-- These two analysis streams are then combined so that only transcripts originating from tissue-covered capture spots are kept downstream.
+- The **sequencing pipeline** trims reads, aligns them to the reference, and corrects barcode and UMI errors.
+- The **imaging pipeline** identifies fiducial markers (the positional landmarks on Visium slides), detects tissue boundaries, and aligns microscope and CytAssist images if applicable.
+- These two analysis pipelines are then merged so that downstream expression matrices keep transcripts from tissue-covered capture spots.
 
-The main result of this pipeline is the spatially resolved gene expression dataset, stored as a `.h5` file (we will see how to work with these in [Data Import](01-LoadingData.qmd)).
-Additionally, Space Ranger produces a detailed quality report, summarising key metrics from the workflow, such as sequencing performance and image alignment.
+One main output is a spatial gene expression matrix in `.h5` format (used in [Data Import](01-LoadingData.qmd)).
+Space Ranger also generates a quality report, which is the focus of this chapter.
+Some sequencing facilities run Space Ranger before delivering data, so the report interpretation is often the first QC task in our analysis.
 
-It is not unusual that sequencing facilities already ran your samples through Space Ranger.
-For that reason, interpreting the quality report is the main focus of this section.
-However, if you'd like to run Space Ranger yourself, you can find the instructions in the [10x Genomics manual](https://www.10xgenomics.com/support/software/space-ranger/latest).
+::: {.callout-note}
+#### Xenium quality report
+
+Xenium datasets are usually processed in the instrument, although a standalone workflow is provided by 10x Genomics called [**Xenium Ranger**](https://www.10xgenomics.com/support/software/xenium-ranger/latest).
+Xenium Ranger also produces a quality report, with similar metrics to the ones discussed here.
+:::
 
 ## Quality Report
 
-The Space Ranger quality report is provided as a HTML file (with a suffix `_web_summary.html`) and can be accessed through the output directory of the pipeline.
-A similar type of report is also generated for Xenium data, which is based on very similar underlying processing.
+The Space Ranger report is an HTML file named `analysis_summary.html` in the pipeline output directory.
+10x Genomics provides a detailed [description of the report sections and metrics](https://www.10xgenomics.com/support/software/space-ranger/latest/analysis/outputs/space-ranger-web-summary).
 
-The report provides a visual summary of the QC metrics, along with detailed information about the sequencing and capture performance for each sample.
-Reports can be sligthly different depending on the version of Space Ranger used and the input technology, but the core QC metrics are generally consistent across versions.
+The report sections may differ depending on the Space Ranger version used and the assay type, but most core QC metrics are comparable.
+You should focus on patterns across several metrics, not only on whether a single value looks high or low in isolation.
 
-:::{.callout-tip}
+::: {.callout-tip}
 #### Example file
 
-To get a picture of what the Space Ranger report looks like, you can open two example reports provided in the `data` folder:
+To see the report structure, open these example files in the `data` folder:
 
 - `mouse_sagittal_visium_v1/V1_Mouse_Brain_Sagittal_Anterior_Section_2_web_summary.html` → Visium v1 dataset processed with Space Ranger v2.0.0
 - `zebrafish_head_visium_hd/Visium_HD_3prime_Zebrafish_Head_web_summary.html` → Visium HD dataset processed with Space Ranger v4.0.1
 :::
 
-The Space Ranger report includes several key sections, such as:
+Common report sections include:
 
-- **Summary**: Provides an overview of the sequencing and capture performance, including total reads, total spots, and the percentage of reads mapped to the reference genome.
+- **Summary**: metrics such as total reads, number of spots, and reads mapped to the reference.
+- **Sequencing**: read-level metrics, including valid barcodes, valid UMIs, and mapping rates.
+- **Capture Metrics**: spot or cell recovery metrics including number of spots detected, the number of genes detected per spot and the distribution of gene expression across spots.
+- **Segmentation Metrics**: cell segmentation summaries, such as the number of segmented cells, the distribution of UMIs per cell and cell sizes.
+  This section only applies to segmented assays such as Visium HD.
+- **Sample Metadata**: sample details, pipeline version, and reference information.
+- **Analysis (Summary)**: a basic default analysis summary, such as cluster counts and marker genes.
+- **Image QC**: image quality and alignment information.
 
-- **Sequencing**: Includes metrics related to the sequencing quality, such as the percentage of reads with valid barcodes, the percentage of reads with valid UMIs, and the percentage of reads mapped to the reference genome.
-
-- **Capture Metrics**: Provides information about the capture performance, including the number of spots detected, the number of genes detected per spot, and the distribution of gene expression across spots.
-
-- **Segmentation Metrics**: Includes metrics related to the segmentation of the tissue, such as the number of segmented cells and the distribution of UMIs per cell and cell sizes.
-
-- **Sample (Metadata)**: Provides additional information about the sample, such as the sample name, the date of processing, and the version of Space Ranger used as well as the version of the reference genome.
-
-- **Analysis (Summary)**: Provides a summary of a very basic default analysis, including the number of clusters identified and the marker genes detected for each cluster.
-
-- **Image QC**: Provides information about the quality of the tissue image.
-
-Not all of these sections are present for all datasets, as some of the metrics are specific to certain types of data (e.g., segmentation metrics are only relevant for datasets that have been segmented, such as Visium HD datasets).
+Some of these sections are assay-specific.
+For example, segmentation metrics are only shown for datasets where segmentation is part of the workflow.
 
 ## Interpreting QC Metrics
 
-When interpreting the QC metrics from the Space Ranger report, it is important to consider the following factors:
+There are no standard thresholds when it comes to interpreting these QC metrics.
+Therefore, it is often useful to interpret them in comparison to other datasets.
+For example, comparisons with technical replicates, samples from the same run, or past runs from the same protocol.
+A single unusual metric does not always indicate your sample is bad, but when several related metrics show issues, then you may have to investigate what may be causing it.
 
-- **Total reads**: A higher number of total reads generally indicates better sequencing depth, which can lead to more accurate gene expression quantification.
-  However, it is important to also consider the percentage of reads that are mapped to the reference genome, as a high number of total reads with a low mapping percentage may indicate issues with the sequencing or sample quality.
+Here are some of the factors to consider when interpreting the QC metrics:
 
-- **Total spots/cells**: The number of spots/cells detected can provide insight into the capture performance.
-  A low number of spots may indicate issues with the capture process, while a very high number of spots or cells may indicate potential issues with background noise or over-segmentation.
+- **Total reads**: Higher number of total reads usually improves quantification, but it only helps when reads map and pass barcode/UMI checks.
+  If total reads are high but usable reads are low, investigate sequencing quality, library composition, or the reference used.
 
-- **Percentage of reads mapped to reference genome**: A high percentage of reads mapped to the reference genome is generally a good indicator of data quality.
-  A low mapping percentage may indicate issues with the sequencing quality, sample quality, or the reference genome used for alignment.
+- **Total spots/cells**: This relates to capture and tissue detection performance.
+  Low counts can indicate tissue handling or capture problems.
+  High counts can indicate background capture or over-segmentation, depending on assay type.
 
-- **Percentage of reads with valid barcodes/UMIs**: A high percentage of reads with valid barcodes and UMIs is important for accurate quantification of gene expression.
-  A low percentage may indicate issues with the sequencing quality or the library preparation process.
+- **Reads mapped to the reference**: Mapping percentage is a good indicator of whether the sequences match the chosen reference.
+  Low mapping can be due to low RNA quality, contamination, poor library quality, or an unsuitable reference genome or annotation.
 
-- **Number of genes detected per spot/cell**: A higher number of genes detected per spot/cell can indicate better capture performance and higher data quality.
-  However, it is important to also consider the distribution of gene expression across spots/cells, as a very high number of genes detected in a small number of spots/cells may indicate potential issues with background noise or over-segmentation.
-  Hence, both very low and very high numbers of genes detected per spot/cell can be indicative of potential issues with the data quality.
+- **Reads with valid barcodes and UMIs**: This indicates whether reads can be assigned reliably to capture spots and molecules.
+  Low percentages often point to sequencing quality issues or library preparation problems.
 
-- **Segmentation metrics**: For datasets that have been segmented, it is important to consider the number of segmented cells and the distribution of UMIs per cell and cell sizes.
-  A very low number of segmented cells may indicate issues with the segmentation process, while a very high number of segmented cells may indicate potential issues with over-segmentation.
-  Additionally, a very low or very high number of UMIs per cell or very small or large cell sizes may indicate potential issues with the data quality.
+- **Genes detected per spot/cell**: This metric relates to expression complexity, with higher values often indicating better capture performance.
+  However, the spatial distribution of this metric is important to consider.
+  Very high values concentrated in a subset of spots or cells can indicate background noise or over-segmentation.
+  Very low values suggest weak capture or degraded material.
 
-- **Image QC**: The quality of the tissue image can also impact the overall data quality.
-  Poor image quality may indicate issues with the tissue processing or imaging, which can affect the accuracy of the spatial gene expression data.
+- **Segmentation metrics (when present)**: Consider segmented cell counts together with UMI-per-cell and cell-size distributions.
+  Extreme values can indicate under-segmentation or over-segmentation.
+  Compare these metrics with image quality and tissue morphology to decide whether the issue is biological or technical.
+
+- **Image QC**: Poor image quality or poor alignment affects tissue detection and spatial clustering.
+  If imaging metrics are weak, interpret expression-based QC carefully, as image artefacts can affect our downstream quantifications.
 
 ## Potential Issues
 
-Some common issues that may affect downstream analysis include:
+The table below lists common patterns affecting data quality, possible causes, and some follow-up checks that can be made.
 
-- A low percentage of reads mapped to the reference genome, may indicate low sequencing quality, low sample quality, or an inappropriate reference genome used for alignment.
-  You can check the quality of the raw sequencing data, assess the sample quality (e.g. RNA integrity), and confirm the reference genome used is suitable for your species or strain.
-
-- A low number of spots/cells detected, may indicate issues with the capture process.
-  You can check the quality of the tissue section, assess the capture performance, or optimise the capture protocol for future experiments.
-
-- A low percentage of reads with valid barcodes/UMIs, may indicate issues with the sequencing quality or the library preparation process.
-  You can check the quality of the raw sequencing data, assess the library preparation process, or optimise the library preparation protocol for future experiments.
-
-- A very low or very high number of genes detected per spot/cell, may indicate issues with the capture performance or background noise.
-  You can assess the distribution of gene expression across spots/cells, check for potential issues with the tissue processing or imaging, or optimise the capture protocol for future experiments.
-
-- Poor segmentation metrics may indicate issues with the segmentation process (e.g. the segmentation algorithm or the quality of the tissue image).
-  You can assess the segmentation results, check for issues with the tissue processing or imaging, or optimise the segmentation algorithm for future experiments.
-
-## Conclusion
-
-In conclusion, the Space Ranger report provides a comprehensive overview of the quality control metrics for Visium and Xenium datasets.
-By carefully interpreting these metrics, you can assess the quality of your data and identify potential issues that may need to be addressed before proceeding with downstream analysis.
-It is important to consider multiple QC metrics in combination, as they can provide complementary information about the overall data quality.
-By addressing any potential issues identified through the QC metrics, you can ensure that your downstream analysis is based on high-quality data, which can lead to more accurate and reliable results.
+  | Pattern in report                         | Possible causes                                         | Useful follow-up checks                                                                                            |
+  | ----------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+  | Low mapping percentage                    | RNA degradation, contamination, or unsuitable reference | Confirm species/strain reference choice, inspect FASTQ quality metrics, review sample quality (e.g. RNA integrity) |
+  | Low spot/cell recovery                    | Poor tissue handling or weak capture efficiency         | Check tissue section quality, review permeabilisation and capture conditions, compare with technical replicates    |
+  | Low valid barcode/UMI rates               | Sequencing quality or library preparation issues        | Inspect base-quality profiles, review library preparation QC, compare across lanes/runs                            |
+  | Very low or very high genes per spot/cell | Weak capture, ambient RNA, or segmentation artefacts    | Inspect expression distributions spatially, check image quality, review segmentation outputs                       |
+  | Poor segmentation metrics                 | Under-segmentation or over-segmentation settings        | Examine segmentation overlays, compare cell-size and UMI distributions with expected tissue morphology             |
 
 ## Summary
-::: {.callout-tip}
-#### Key Points
 
-- The Space Ranger report provides a comprehensive overview of the quality control metrics for Visium and Xenium datasets.
-- Key QC metrics include total reads, total spots/cells, percentage of reads mapped to the reference genome, percentage of reads with valid barcodes/UMIs, number of genes detected per spot/cell, segmentation metrics, and image QC.
-- Interpreting these QC metrics can help identify potential issues with the data that may need to be addressed before proceeding with downstream analysis.
-- Addressing any potential issues identified through the QC metrics can help ensure that downstream analysis is based on high-quality data, leading to more accurate and reliable results.
+The Space Ranger report provides a structured first-pass QC assessment for Visium data.
+Use multiple metrics together, and interpret them in the context of assay type, sample quality, and comparable runs.
+When metrics are inconsistent, investigate before starting downstream analysis.
+This step reduces the risk of carrying technical artefacts into biological interpretation.
+
+::: {.callout-tip}
+### Key Points
+
+- Space Ranger combines sequencing and imaging pipelines to produce spatially resolved expression outputs and QC summaries.
+  - It takes as inputs FASTQ files, a reference transcriptome, tissue images, and slide metadata.
+  - The workflow links barcode/UMI-corrected expression data to tissue-covered capture locations.
+
+- The web summary is organised into key sections to address different QC aspects.
+  - "Summary" and "Sequencing" sections give read and mapping performance metrics.
+  - "Capture Metrics", "Segmentation Metrics", and "Image QC" provide metrics to assess recovery, segmentation quality, and image/alignment quality.
+
+- QC interpretation requires looking at patterns across several metrics and preferably comparisons with similar datasets.
+
+- Common QC warning patterns can be linked to likely technical causes and practical follow-up checks.
+  - Low mapping rates can indicate RNA quality, contamination, or reference mismatch.
+  - Abnormal spot/cell recovery, barcode/UMI validity, genes-per-spot distributions, or segmentation metrics often require checks of tissue quality, library quality, image quality, and segmentation outputs.
 :::
