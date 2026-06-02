@@ -14,7 +14,11 @@ knitr::opts_knit$set(root.dir = here::here("course_files"))
 ::: {.callout-tip}
 #### Learning Objectives
 
-- TODO
+- Explain why normalisation is needed in spatial transcriptomics data, including the roles of library size variation and confounders such as mitochondrial fraction.
+- Apply `SCTransform()`, `NormalizeData()` with `ScaleData()`, and scran-based normalisation to a Visium dataset.
+- Describe the data layers stored in a Seurat assay after normalisation and switch between assays.
+- Compare normalisation methods by running clustering on each normalised dataset and calculating the Adjusted Rand Index (ARI) between cluster assignments.
+- Interpret published benchmarking evidence to inform the choice of normalisation method for spatial transcriptomics data.
 :::
 
 ## Setup
@@ -54,7 +58,7 @@ When library sizes differ, raw counts can make spots look biologically different
 For example, if two identical spots are sequenced at different depths, the deeper spot will appear to have higher expression for most genes.
 
 Other **confounders** can also affect observed expression.
-For instance, a high mitochondrial fraction can shift reads away from other genes, making those genes appear artificially lowly expressed.
+For instance, a high mitochondrial fraction can shift reads away from other genes, making those genes appear under-expressed.
 
 If we do not adjust for these effects, clustering can reflect technical artefacts rather than biology.
 
@@ -69,8 +73,7 @@ Some common methods include:
 - **Scran normalisation:** Instead of using the spot library size as the scaling factor, this method determines size factors for each spot by pooling information across similar spots, using methods inspired by bulk RNA-seq normalisation.
   This method can help to improve normalisation in sparse datasets such as single-cell and spatial transcriptomics data.
   The method is implemented in the [`scran`](https://bioconductor.org/packages/release/bioc/html/scran.html) and [`scuttle`](https://bioconductor.org/packages/release/bioc/html/scuttle.html) packages.
-- **SCTransform:** A negative binomial regression model is used to normalise raw counts.
-  The model simultaneously accounts for library size differences across spots, as well as any confounders which can be regressed out.
+- **SCTransform:** Fits a negative binomial regression model to normalise raw counts, accounting for library size differences across spots and any specified confounders.
 
 These methods all assume that spots behave like single cells.
 Newer methods, such as [`SpaNorm`](https://bioconductor.org/packages//release/bioc/html/SpaNorm.html), aim to make normalisation **spatially aware**.
@@ -97,8 +100,7 @@ plot(rowMeans(rawCts), rowVars(rawCts), log = "xy")
 abline(0, 1, col = "red")
 ```
 
-Accounting for this trend is important.
-Otherwise, highly expressed genes can dominate variable-feature selection and bias downstream steps such as PCA.
+Removing this trend reduces the risk that highly expressed genes dominate variable-feature selection and bias downstream steps such as PCA.
 
 A key argument is `vars.to.regress`, which removes variation linked to metadata variables such as mitochondrial percentage.
 
@@ -156,14 +158,14 @@ To reduce memory pressure:
 
 ## Library size normalisation
 
-A simpler alternative is Seurat's `NormalizeData()`, which:
+A simpler alternative is Seurat's `NormalizeData()`, which applies three steps:
 
-1. Dividing the counts for each gene in each spot by the total counts for that spot (i.e. its library size).
+1. Divides the counts for each gene by the total counts for that spot (its library size).
 2. Multiplies by a scale factor (default 10,000) to avoid very small values.
-3. Applying a log transformation.
+3. Log-transforms the scaled values.
 
-Run this on raw counts (`Spatial` here), not on `SCT`.
-You can ensure that in two ways:
+You should apply `NormalizeData()` to the raw counts in the `Spatial` assay, not to `SCT`.
+You can do this in two ways:
 
 - Change the default assay with `DefaultAssay(visium) <- "Spatial"` before running the function.
 - Specify the assay in the function call with `assay = "Spatial"`.
@@ -182,7 +184,7 @@ visium[["Spatial"]]
 
 Although simple, this approach often performs well for tasks such as dimensionality reduction and clustering, so it remains widely used.
 
-Despite its simplicity, log-normalisation weakens the mean-variance trend, although usually less strongly than `SCTransform()`:
+Log-normalisation does weaken the mean-variance trend, though usually less effectively than `SCTransform()`:
 
 ```{r}
 #| label: log-normalised-mean-variance
@@ -267,23 +269,20 @@ This effectively copies `data` into `scale.data`, which satisfies functions that
 
 ## Scran normalisation
 
-Scran workflows are built for Bioconductor classes such as `SingleCellExperiment` and `SpatialExperiment`.
+The scran workflow is built for Bioconductor classes such as `SingleCellExperiment` and `SpatialExperiment`.
 In Seurat, we therefore run the key steps manually.
 
-We will follow this workflow:
+We do this with the following steps:
 
-1. Perform quick clustering of spots.
+1. Cluster spots quickly using `scran::quickCluster()`.
    These clusters do not need to be biologically meaningful; they only need to group similar spots for size-factor estimation.
 
-- We use `scran::quickCluster()`.
-
-2. Calculate spot-specific size factors.
+2. Calculate spot-specific size factors using `scuttle::pooledSizeFactors()`, which pools information across similar spots.
    This refines simple library-size scaling.
 
-- We use `scuttle::pooledSizeFactors()`, which pools information within similar spots.
+3. Divide raw counts by size factors and log-transform.
 
-3. Divide raw counts by size factors and apply a log transform.
-4. Add the normalised values back to Seurat as a new assay for downstream analysis.
+4. Store the normalised values in a new Seurat assay for downstream use.
 
 ```{r}
 #| label: scran-normalisation
@@ -306,7 +305,7 @@ scranNormCts <- log1p(
 )
 ```
 
-You can optionally store these values as a new assay:
+You can store these values as a new assay for downstream use:
 
 ```{r}
 #| label: add-scran-assay
@@ -364,19 +363,17 @@ visium <- readRDS("precomputed/mouse_brain_normalised.rds")
 Layers(visium[["Scran"]])
 ```
 
-### SpaNorm
+## SpaNorm
 
 The methods above are not spatially aware because they ignore spot coordinates.
 Recent work suggests this can be problematic, as library size can vary with spatial location.
 If so, correcting library size without spatial context may over-correct and remove true biological structure.
 
 This is still an active research area, so available tools are limited.
-`SpaNorm` is one of the current options.
+`SpaNorm` is one of the few available options.
 
-At the time of writing, known issues prevent direct use with our Seurat object.
+At the time of writing, a known bug prevents direct use with our Seurat object.
 We include the code below to show the intended workflow and link to the current status ([GitHub issue](https://github.com/bhuvad/SpaNorm/issues/18)).
-
-<!-- CODE NOTE: The code block below uses `defaultAssay(visium)`; in Seurat this is typically `DefaultAssay(visium)`. Please verify and correct if needed. -->
 
 ```{r}
 #| label: spnorm
@@ -384,7 +381,7 @@ We include the code below to show the intended workflow and link to the current 
 
 # create a separate assay for the SpaNorm normalisation
 visium[["SpaNorm"]] <- CreateAssayObject(counts = visium[["Spatial"]]$counts)
-defaultAssay(visium) <- "SpaNorm"
+DefaultAssay(visium) <- "SpaNorm"
 
 # Perform SpaNorm normalization - currently fails due to bug
 visium <- SpaNorm::SpaNorm(visium)
@@ -395,8 +392,7 @@ visium[["SpaNorm"]]
 
 ## Which Normalisation?
 
-Which normalisation should you choose?
-There is no universal answer yet.
+There is no universal answer for which normalisation to choose.
 
 [Bhuva et al. (2024)](https://doi.org/10.1186/s13059-024-03241-7) benchmarked several non-spatial normalisation and clustering workflows across tissues and technologies.
 One key conclusion was:
@@ -404,10 +400,10 @@ One key conclusion was:
 > (...) library size or total detections per cell significantly differ across tissue structures, representing real biology rather than technical variation.
 
 This implies that methods that aggressively correct library size can remove genuine biological signal.
-In that benchmark, `SCTransform` performed less well than scran and simple library-size normalisation (equivalent to `NormalizeData()` without Z-scoring).
+In that benchmark, `SCTransform` performed worse than scran and simple library-size normalisation (equivalent to `NormalizeData()` without Z-scoring).
 
 In follow-up work, [Salim et al. (2025)](https://doi.org/10.1186/s13059-025-03565-y) reported that `SpaNorm` better removed technical variation while preserving biological structure.
-They also found that `SCTransform` tended to preserve spatial domains less well than scran and standard library-size normalisation.
+They also found that `SCTransform` tended to preserve spatial domains less effectively than scran and standard library-size normalisation.
 
 These benchmarks are still limited in scope, so a practical strategy is to **compare several methods and check whether your biological conclusions are robust**.
 
@@ -454,7 +450,7 @@ visium <- visium |>
   FindClusters(resolution = 0.5, cluster.name = "scranClusters")
 ```
 
-Now plot the three clustering results:
+Plot the clustering results for all three methods:
 
 ```{r}
 #| label: plot-normalization-comparison
@@ -640,14 +636,14 @@ Layers(visium2[["Scran"]])
 #| message: false
 #| results: "hide"
 
-# SCTransform with mitochondrial regression
+# SCTransform clustering
 DefaultAssay(visium2) <- "SCT"
 visium2 <- visium2 |>
   RunPCA() |>
   FindNeighbors(dims = 1:30) |>
   FindClusters(resolution = 0.5, cluster.name = "sctClusters")
 
-# Library size normalisation with scaling and mitochondrial regression
+# Library size normalisation clustering
 DefaultAssay(visium2) <- "Spatial"
 visium2 <- visium2 |>
   FindVariableFeatures() |>
@@ -655,7 +651,7 @@ visium2 <- visium2 |>
   FindNeighbors(dims = 1:30) |>
   FindClusters(resolution = 0.5, cluster.name = "scaledClusters")
 
-# Scran normalisation
+# Scran clustering
 DefaultAssay(visium2) <- "Scran"
 visium2 <- visium2 |>
   FindVariableFeatures(selection.method = "mean.var.plot") |>
@@ -738,9 +734,7 @@ ari_results_mt_vs_no_mt
 ```
 
 In this dataset, agreement between regressed and non-regressed runs is higher for `SCTransform` and scaled library-size normalisation than for scran.
-This matches the visual differences seen above.
-
-This suggests that scran may be more sensitive to mitochondrial confounding and/or Z-score scaling choices.
+These results match the visual differences seen above, suggesting that scran may be more sensitive to mitochondrial confounding and/or Z-score scaling choices.
 
 There is still no single "correct" result, but this exercise shows that both normalisation method and confounder handling can change downstream interpretation.
 
@@ -754,5 +748,26 @@ Later, test robustness by repeating key downstream steps with at least one alter
 ::: {.callout-tip}
 #### Key Points
 
-- TODO
+- Normalisation corrects for technical sources of variation that can hide biological signal.
+  - Library size (total reads per spot) is the primary confounder: spots sequenced more deeply appear to have higher expression for most genes.
+  - Other confounders, such as high mitochondrial fraction, can further affect expression profiles.
+  - Without normalisation, clustering can reflect technical artefacts rather than true tissue structure.
+
+- Several normalisation approaches can be applied. We covered a few:
+  - `SCTransform()` fits a negative binomial model and applies variance stabilisation; use `vars.to.regress` to regress out confounders.
+  - `NormalizeData()` divides counts by library size and log-transforms; follow with `ScaleData()` to Z-score and regress confounders.
+  - Scran normalisation uses `scran::quickCluster()` and `scuttle::pooledSizeFactors()` to estimate size factors by pooling across similar spots.
+
+- After normalisation, Seurat stores results in named layers within each assay; downstream steps such as PCA and clustering use `scale.data` by default.
+  - `counts`: raw or model-corrected counts.
+  - `data`: log-transformed values used for visualisation.
+  - `scale.data`: Z-scored or residual values used for dimensionality reduction and clustering.
+
+- Normalisation choice can affect downstream clustering results. Using spatial plots and the Adjusted Rand Index (ARI) can help in comparing methods.
+  - ARI values near 1 indicate near-identical cluster assignments; values near 0 indicate chance-level agreement.
+  - Even when ARI is high, spatial plots can reveal differences in cluster granularity and boundary location.
+
+- No single normalisation method is universally optimal.
+  - Which method to choose can be informed by benchmarking studies and knowledge of tissue anatomy.
+  - A practical approach is to run multiple methods and confirm that biological conclusions are consistent across them.
 :::
