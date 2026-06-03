@@ -12,20 +12,23 @@ knitr::opts_knit$set(root.dir = here::here("course_files"))
 ```
 
 ::: {.callout-tip}
-#### Learning Objectives
+### Learning Objectives
 
-- Perform PCA on spatial transcriptomics data
-- Visualize PCA results using UMAP and tSNE
-- Learn about important UMAP parameters and how to adjust them
-- Learn about tSNE parameters
-- Understand the interpretation of PCA, tSNE and UMAP results
+- Identify highly variable genes for downstream analysis using `SCTransform()` or `FindVariableFeatures()`.
+- Execute Principal Component Analysis (PCA) using `RunPCA()` to reduce data dimensionality.
+- Interpret elbow plots to determine the appropriate number of principal components to retain.
+- Execute UMAP and t-SNE on PCA results to visualise high-dimensional data in two dimensions.
+- Explain how the `min.dist`, `n.neighbors`, and `perplexity` parameters affect the visual structure of non-linear embeddings.
 :::
 
 ## Setup
 
-We will keep working on the sagittal mouse brain dataset we have been using in previous chapters.
+We continue working with the sagittal mouse brain dataset from previous chapters.
 
-Start by loading the required libraries and reading the Seurat object from the previous chapter.
+:::{.callout-note collapse="true"}
+#### Click to expand
+
+Start by loading the required libraries and the Seurat object.
 
 ```{r}
 #| label: load-visium-data
@@ -38,61 +41,55 @@ library(ggplot2) # plotting
 library(patchwork) # combining plots
 
 # Load the Seurat object from the previous chapter
-visium <- readRDS("precomputed/mouse_brain_normalised.rds")
+visium <- readRDS("precomputed/mouse_brain_normalised_cleaned.rds")
 ```
 
 As a reminder, this object was created by:
 
 - Importing the raw data using `Load10X_Spatial()`, followed by QC and filtering to remove low-quality spots.
-- Normalising the data using two different methods:
-  - `NormalizeData()` with log-normalisation and `ScaleData()` for Z-scoring and regressing out confounders.
-    Stored in the "Spatial" assay.
-  - `SCTransform()` normalisation, which models technical variation and applies variance stabilisation.
-    Stored in the "SCT" assay.
+- Data normalisation using `SCTransform()`, which models technical variation and applies variance stabilisation.
+  Stored in the "SCT" assay.
+:::
 
 ## Dimensionality Reduction
 
-Dimensionality reduction is a common step in the analysis of high-dimensional data, such as spatial (and single-cell) transcriptomics data.
-Its main goal is to reduce our matrix of gene expression from thousands of genes to a smaller number of dimensions that still capture most of the variation in the data.
-One way to think about these methods, is that they are trying to capture correlated signal across genes, and therefore transform the data such that it can be represented in a few new axes of dimensions.
+Dimensionality reduction is a standard step when analysing high-dimensional data, such as spatial and single-cell transcriptomics.
+The main goal is to reduce the gene expression matrix from thousands of genes to a small number of dimensions while retaining most of the variation in the data.
+These methods identify correlated signals across genes, transforming the data onto a few new axes, thus reducing the dimensionality of the original matrix.
 
-Broadly speaking, there are two main types of algorithms:
+Algorithms generally fall into two categories:
 
-- **Linear algorithms**: Apply a transformation that retains the relative distances between the original points in the data (spots/cells in our case).
-  - Methods include Principal Components Analysis (PCA) and Non-negative matrix factorization (NMF).
+- **Linear algorithms**: Apply a transformation that preserves the relative distances between the original points (spots or cells).
+  - Methods include Principal Component Analysis (PCA) and Non-negative Matrix Factorisation (NMF).
+- **Non-linear algorithms**: Exaggerate similarities and differences.
+  Spots that are similar in the original data are placed very close together, while dissimilar spots are pushed further apart.
+  - Methods include t-Distributed Stochastic Neighbour Embedding (t-SNE) and Uniform Manifold Approximation and Projection (UMAP).
 
-- **Nonlinear algorithms**: Aim at "exagerating" similarities and differences observed in the original data.
-  That is, spots/cells that appeared similar in the original data will have small relative distances between them in the new transformation, while those that appeared dissimilar will placed relatively more distant from each other.
-  - Methods include T-distributed Stochastic Neighbor Embedding (t-SNE) and Uniform manifold approximation and projection (UMAP).
+Both strategies are widely used, with two main goals:
 
-Both of these strategies are widely used in single-cell/spatial transcriptomics, with two main goals:
+- **Computational efficiency**: Linear transformations like PCA compress the highly dimensional matrices, reducing the computational demand for downstream analyses. Because PCA is linear, it does not distort original distances, but it successfully discards uninformative noise from lowly or randomly expressed genes.
+- **Visualisation**: Non-linear transformations like t-SNE and UMAP are primarily used to plot data in 2D. Because expression patterns are complex, PCA alone cannot capture all nuanced differences in two dimensions. Non-linear methods deal with this complexity better, making them popular for visualisation.
 
-- **Computational efficiency**: Linear transformations like PCA are used to "compress" the very highly-dimensional matrices (with thousands of genes) to much smaller ones, reducing the computational demand in downstream analyses.
-  Since PCA is a linear transformation, it should not distort the distances between the original cells/spots, while still discarding non-informative signal for example from lowly expressed or randomly expressed genes.
-- **Visualisation**: Non-linear transformations like t-SNE and UMAP are used primarily for visualisation in 2D graphs.
-  Since the patterns of expression in single-cell/spatial data are complex, PCA alone cannot represent all the nuanced differences in 2-dimensions alone.
-  Non-linear methods, however, are able to achieve this much more effectively and so are popular alternatives for the purpose of visualisation.
-
-In general, three main steps are performed in this process and illustrated in the diagram below.
+This process typically involves three main steps, illustrated below:
 
 ![Dimensionality Reduction](images/dimred.excalidraw.svg)
 
-In the following sections, we will see how to implement these to our mouse brain Visium dataset.
+We will apply these steps to our mouse brain Visium dataset.
 
 ## Feature Selection
 
-Feature selection is the process of selecting **highly variable genes (HVGs)** from our dataset.
-Although we could use all genes as input to the PCA, we would be including a lot of unnecessary noise by doing so.
-We can simplify the process by removing genes that are clearly non-variable across the cells/spots.
+Feature selection is the process of identifying **highly variable genes (HVGs)**.
+Although we could use all genes for PCA, this includes unnecessary noise.
+Therefore, we remove genes with little variation across spots before performing dimensionality reduction.
 
-There are a few different approaches to selecting HVGs:
+There are different approaches for selecting HVGs depending on the assay:
 
 - The `SCTransform()` function internally selects highly variable genes based on the residuals from its statistical model.
-- The `FindVariableGenes()` function can be used to pick HGVs from the "Spatial" assay, by looking for genes that deviate from the mean-variance relationship in the raw counts (if you need a reminder, we explored this relationship in [QC & Filtering](02a-Filtering.qmd)).
+- The `FindVariableFeatures()` function selects HVGs from the "Spatial" assay by identifying genes that deviate from the expected mean-variance relationship in the raw counts.
 
 ### HVGs with sctransform
 
-We can see the variable genes using the `VariableFeatures()` function:
+We can inspect the currently selected variable genes using `VariableFeatures()`:
 
 ```{r}
 #| label: view-sct-hvgs
@@ -105,16 +102,15 @@ length(VariableFeatures(visium))
 head(VariableFeatures(visium))
 ```
 
-We can see that we have 3000 genes selected as highly variable.
-These came from running the `SCTransform()` function earlier ([Normalisation](02b-Normalisation.qmd) chapter).
+The object currently has 3,000 highly variable genes.
+These were selected when we ran `SCTransform()` in the [Normalisation](02b-Normalisation.qmd) chapter.
 
-Looking at the help for this function with `?SCTransform` we can see an option called `variable.features.n` which can be used to "*select this many top features by residual variance (default: 3000)*".
-
-So, if we wanted to change how many variable genes to use in downstream analysis, we could re-run the normalisation by changing this option.
-For example, to pick 2000 variable genes:
+The `?SCTransform` documentation shows an option called `variable.features.n`.
+To change the number of variable genes used downstream, we can re-run the normalisation with a new value.
+For example, to select 2,000 variable genes:
 
 ```{r}
-#| label: sct-5k-genes
+#| label: sct-2k-genes
 #| warning: false
 #| message: false
 
@@ -130,7 +126,7 @@ visium <- SCTransform(
 length(VariableFeatures(visium))
 ```
 
-You can visualise the variable genes using the `VariableFeaturePlot()` function:
+We can visualise the selected genes using `VariableFeaturePlot()`:
 
 ```{r}
 #| label: variable-feature-plot-sct
@@ -139,9 +135,9 @@ VariableFeaturePlot(visium, assay = "SCT") +
   ggtitle("Highly Variable Genes in SCT Assay")
 ```
 
-### HVGs with `FindVariableGenes()`
+### HVGs with `FindVariableFeatures()`
 
-For the "Spatial" assay, variable genes can be chosen using the `FindVariableGenes()` function.
+To identify variable genes in the "Spatial" assay, you can use the `FindVariableFeatures()` function:
 
 ```{r}
 #| label: find-variable-genes
@@ -157,9 +153,9 @@ visium <- FindVariableFeatures(
 )
 ```
 
-For clarity, we explicitly set `nfeatures = 2000`, although that is the default if you don't specify it.
+For clarity, we explicitly set `nfeatures = 2000` here, but this is the default value if you don't specify it.
 
-Again, we can visualise the variable genes using the `VariableFeaturePlot()` function:
+We can use the same function as before visualise the variable genes for the "Spatial" assay:
 
 ```{r}
 #| label: variable-feature-plot-spatial
@@ -170,8 +166,8 @@ VariableFeaturePlot(visium, assay = "Spatial") +
 
 ## Principal Component Analysis (PCA)
 
-Now we have selected our highly variable genes, we can perform dimensionality reduction using PCA.
-We will work with the "SCT" assay for the rest of our analysis.
+Having selected highly variable genes, we can perform dimensionality reduction.
+We use the "SCT" assay for the rest of our analysis.
 
 ```{r}
 #| label: set-sct-assay
@@ -180,8 +176,8 @@ We will work with the "SCT" assay for the rest of our analysis.
 DefaultAssay(visium) <- "SCT"
 ```
 
-Principal Component Analysis (PCA) is a dimensionality reduction technique that helps to reduce the complexity of the high-dimensional count data, while retaining most of the variance.
-In Seurat, you can perform PCA using the `RunPCA()` function:
+Principal Component Analysis (PCA) reduces the dimensionality of the data while retaining most of the variance.
+We use `RunPCA()` to compute the principal components:
 
 ```{r}
 #| label: run-pca
@@ -196,10 +192,11 @@ visium <- RunPCA(visium, assay = "SCT", npcs = 100)
 visium
 ```
 
-We have specified `npcs = 100` to compute the first 100 principal components.
-The default is 50, but here we compute more to see how the variance explained by the PCs changes at higher dimensions.
+We specify `npcs = 100` to compute the first 100 principal components.
+The default is 50, but calculating more allows us to observe how the variance explained changes across a wider range of dimensions.
 
-A common way to assess how many principal components (PCs) to use in downstream analyses is to look at an elbow plot, which shows the percentage variance explained by each PC.
+To decide how many principal components (PCs) to retain for downstream analyses, we examine an elbow plot.
+This plot shows the percentage of variance explained by each PC.
 
 ```{r}
 #| label: elbow-plot
@@ -208,9 +205,9 @@ A common way to assess how many principal components (PCs) to use in downstream 
 ElbowPlot(visium, ndims = 100, plot_type = "variance", reduction = 'pca')
 ```
 
-As you can see, the variance explained drops sharply after the first few PCs, and then starts to level off, giving the plot the characteristic "elbow" shape.
+The variance explained drops sharply after the first few PCs, then levels off, creating a characteristic "elbow" shape.
 
-We can also make a cumulative variance plot to see how much variance is explained by the first n PCs:
+A cumulative variance plot shows the total variance explained by the first *n* PCs:
 
 ```{r}
 #| label: cumulative-variance-plot
@@ -227,11 +224,11 @@ ElbowPlot(
 ```
 
 We've added some marker lines to help us decide how many PCs to use.
-For example, we can see that the first 50 PCs explain just over 90% of the total variance in the data.
-This suggests that using such a threshold would be a reasonable choice for the number of PCs to use in downstream analyses, as it captures most of the variance while still reducing the dimensionality of the data very significantly.
-We went down from `r nrow(visium)` genes to just 50 dimensions.
+We can see that the first 50 PCs explain just over 90% of the total variance.
+This suggests that such a threshold captures most of the signal while heavily reducing the dataset dimensionality.
+We go from `r nrow(visium)` genes down to 50 dimensions.
 
-As we are happy with 50 PCs, we can re-run the PCA with `npcs = 50`:
+As we are happy with 50 PCs, we re-run the PCA with `npcs = 50`:
 
 ```{r}
 #| label: run-pca-50
@@ -245,12 +242,10 @@ visium <- RunPCA(visium, assay = "SCT", npcs = 50)
 
 ## UMAP and t-SNE
 
-Uniform Manifold Approximation and Projection (UMAP) and T-distributed Stochastic Neighbor Embedding (t-SNE) are two nonlinear dimensionality reduction techniques that are well-suited for visualizing high-dimensional data in a low-dimensional space.
+Uniform Manifold Approximation and Projection (UMAP) and t-Distributed Stochastic Neighbour Embedding (t-SNE) are non-linear dimensionality reduction techniques well-suited for visualising high-dimensional data in 2D.
 
-They are commonly used in single-cell and spatial analysis, and can be run on the PCA results to further reduce the dimensionality to 2D for visualization purposes.
-
-In Seurat, you can perform both these dimensionality reduction techniques using the `RunUMAP()` and `RunTSNE()` functions.
-These functions compute the UMAP and t-SNE embeddings of the data and store them back in the Seurat object.
+They are run on the PCA results to further compress dimensionality for visualisation.
+The `RunUMAP()` and `RunTSNE()` functions compute the embeddings and add them to the Seurat object.
 
 ```{r}
 #| label: run-umap-tsne
@@ -265,8 +260,8 @@ visium <- RunTSNE(visium, reduction = "pca", dims = 1:50)
 Reductions(visium)
 ```
 
-You can use the `DimPlot()` function to visualise the results of dimensionality reductions as a `ggplot` object.
-Here, we plot both side-by-side for comparison.
+You can use the `DimPlot()` function to visualise these reductions.
+We plot both side-by-side for comparison:
 
 ```{r}
 #| label: umap-tsne-plots
@@ -285,36 +280,31 @@ tsne <- DimPlot(visium, reduction = "tsne") +
 umap + tsne
 ```
 
-These plots show the UMAP and t-SNE embeddings of the spatial transcriptomics data, with each point representing a spot in the tissue.
-They are not particularly informative in this case, as we have not performed any clustering or identified any cell types yet.
-However, you can already see some structure in the data, which likely corresponds to different regions of the brain.
+These plots show the UMAP and t-SNE embeddings, with each point representing a spatial spot.
+Although we have not yet identified clusters or cell types, you can already see some structure likely corresponding to distinct anatomical regions in the brain.
 
 :::{.callout-tip collapse="true"}
 #### UMAP or t-SNE?
 
-It's commonly accepted that UMAP performs better than t-SNE, but it can still be useful to compare the results of both methods.
+UMAP is generally preferred over t-SNE, but comparing them can still be informative.
 
-With UMAP projections, the overall layout tends to maintain global relationships better, showing how different clusters relate to each other in a more continuous manner.
+UMAP preserves global relationships better, showing how clusters relate continuously.
 
-t-SNE projections, on the other hand, tend to emphasise local relationships, often resulting in more distinct and separated clusters.
-This can sometimes lead to misinterpretation of the data structure, as t-SNE may suggest that clusters are more isolated than they actually are.
-On the other hand, t-SNE preserves local neighborhood structures more effectively, making it easier to identify small clusters or subpopulations within the data.
-
-Depending on the specific analysis goals, one method may be preferred over the other.
+t-SNE emphasises local relationships, often creating distinct, separated clusters.
+This can falsely suggest that clusters are highly isolated.
+However, by preserving local neighbourhood structures, t-SNE can help identify small subpopulations within the data.
 :::
 
 ## UMAP Parameters
 
-UMAP has several parameters that can be adjusted to change the appearance of the resulting plot.
+UMAP offers parameters to control the balance between local and global structure.
 Two important parameters are:
 
-- **`n.neighbors`**: Controls the size of the local neighborhood used for doing the projection to the low-dimensional space.
-- **`min.dist`**: Controls the minimum distance between points in the low-dimensional space.
+- **`n.neighbors`**: The size of the local neighbourhood used for the projection.
+- **`min.dist`**: The minimum distance allowed between points in the low-dimensional space.
 
-Adjusting these parameters can help to highlight more global or local structures in the data, depending on your goals.
-
-To explore the impact of these parameters, let's start by varying the `min.dist` parameter while keeping `n.neighbors` at its default value of 30.
-Note that we use the options `reduction.name` and `reduction.key` to store the results in different slots of the Seurat object (rather than the default "umap"), so that we can visualise them side by side later on.
+To explore these parameters, we first vary `min.dist` while keeping `n.neighbors` at the default value of 30.
+We use `reduction.name` and `reduction.key` to store each result separately, to avoid overwriting the default "umap" slot.
 
 ```{r}
 #| label: umap-parameters
@@ -354,13 +344,12 @@ umapLowDist <- DimPlot(visium, reduction = "umap_lowdist") +
 umapHighDist + umapLowDist
 ```
 
-A higher `min.dist` value (0.5) results in a more spread-out UMAP plot, as the points are forced to be more separated.
-This can help to highlight global structures in the data.
-On the other hand, a lower `min.dist` value (0.01) results in a more compact UMAP plot, where points come closer together.
-However, you may notice that the overall organisation of the points is similar between the two plots.
-The difference is how much the points seem to "repel" each other, with a higher `min.dist` value creating more space between them.
+A high `min.dist` (0.5) forces points apart, resulting in a diffuse plot that highlights global structure.
+A low `min.dist` (0.01) allows points to pack tightly.
+You may notice that the overall layout is actually very similar between these two plots.
+The main difference is how strongly the points repel each other.
 
-Next, let's look at the effect of changing the `n.neighbors` parameter:
+Next, we vary `n.neighbors`, keeping `min.dist` at the default value of 0.3:
 
 ```{r}
 #| label: umap-parameters-nneighbors
@@ -398,17 +387,16 @@ umapLowNeighbours <- DimPlot(visium, reduction = "umap_lownn") +
 umapHighNeighbours + umapLowNeighbours
 ```
 
-A higher `n.neighbors` value (100) results in a UMAP plot that captures more global structures, with larger clusters that appear more clearly separated from each other.
-This can help to reveal broader patterns and clusterings in the data.
-On the other hand, a lower `n.neighbors` value (5) results in a UMAP that captures finer local structures, with many small clusters starting to form.
-This can help to identify smaller subpopulations within the data.
+A high `n.neighbors` (100) captures global structure, forming large, clearly separated groups that reveal broad patterns.
+A low `n.neighbors` (5) captures fine local structure, breaking the data into many small clusters.
+This can help to identify small subpopulations.
 
 ## t-SNE Parameters
 
-Similarly, t-SNE has a parameter that can significantly change the resulting projection called `perplexity`.
-This parameter controls the balance between local and global aspects of the data, similarly to `n.neighbors` in UMAP.
+For t-SNE, the `perplexity` parameter controls the balance between local and global structure, similarly to `n.neighbors` in UMAP.
 
-By default, `perplexity = 30`, but let's explore some different values to see how it affects the result.
+The default is `perplexity = 30`.
+We can test different values to see their impact:
 
 ```{r}
 #| label: tsne-parameters
@@ -442,15 +430,15 @@ tsneLowPerp <- DimPlot(visium, reduction = "tsne_lowperp") +
 tsneHighPerp + tsneLowPerp
 ```
 
-- A higher `perplexity` value (100) results in larger clusterings of points, capturing more of the global structure in the data.
-  This can help to reveal broader patterns in the data.
-- A lower `perplexity` value (5) results in many small clusters, capturing fine local structure.
-  This can help to identify smaller subpopulations within the data.
+- A high `perplexity` (100) creates larger groups, capturing global structure and broad patterns.
+- A low `perplexity` (5) creates small, fragmented clusters, capturing fine local structure.
 
 ## Exporting the Object
 
-As in previous chapters, we are going to save our Seurat object for reuse.
-Before we do that, we will clean it up by removing some of the dimensionalities we added, which will reduce the memory used in future analyses.
+We save the Seurat object for use in the next chapter.
+
+To make the objects smaller and save memory in downstream steps, we remove the extra dimensionality reduction tables.
+However, you may want to keep these if you plan to use them for other analyses or visualisations later on.
 
 ```{r}
 #| label: clean-up-object
@@ -470,7 +458,7 @@ visium[["tsne_lowperp"]] <- NULL
 Reductions(visium)
 ```
 
-Finally, we are ready to save the object:
+Finally, save the object:
 
 ```{r}
 #| label: save-object
@@ -482,27 +470,32 @@ saveRDS(visium, "results/mouse_brain_dimred.rds")
 
 ```{r}
 #| label: save-participant-data
+#| echo: false
+#| results: "hide"
 
 # Save the participant data for future use
 saveRDS(visium, "precomputed/mouse_brain_dimred.rds")
 ```
 
-## Conclusion
-
-In this chapter, we have learned how to perform PCA and UMAP on spatial transcriptomics data using Seurat.
-We have also visualized the results using UMAP and tSNE plots.
-Dimensionality reduction techniques like PCA and UMAP are essential for analyzing high-dimensional data, as they help to reduce complexity while retaining important information.
-It's important to note that the choice of parameters in UMAP and tSNE can significantly affect the resulting plots.
-By adjusting these parameters, we can reveal different structures in the data, allowing for better visualization and interpretation.
-You can use these techniques to explore and visualize your spatial transcriptomics data, identify patterns, and gain insights into the underlying biology.
-
 ## Summary
-::: {.callout-tip}
-#### Key Points
 
-- PCA is a dimensionality reduction technique that helps to reduce the complexity of high-dimensional data while retaining most of the variance.
-- UMAP is another dimensionality reduction technique that is particularly well-suited for visualizing high-dimensional data in a low-dimensional space.
-- Seurat provides functions for performing PCA, UMAP and tSNA on spatial transcriptomics data.
-- Dimensionality reduction techniques like PCA and UMAP are essential for analyzing high-dimensional data, as they help to reduce complexity while retaining important information.
-- Adjusting parameters in UMAP and tSNE can help to reveal different structures in the data, allowing for better visualization and interpretation.
+::: {.callout-tip}
+### Key Points
+
+- Seurat provides functions to identify highly variable genes (HVGs) before dimensionality reduction.
+  - `SCTransform()` selects features using the `variable.features.n` argument.
+  - `FindVariableFeatures()` identifies features for the "Spatial" assay using the `nfeatures` argument.
+
+- Principal Component Analysis (PCA) is a linear method that compresses the highly dimensional gene expression matrix into fewer dimensions.
+  - The `RunPCA()` function calculates principal components on Seurat object.
+
+- The variance explained by each principal component help determine how many PCs capture the majority of the data's variance.
+  - The `ElbowPlot()` function can be used to visualise the variance explained by each principal component.
+
+- Non-linear dimensional reductions like UMAP and t-SNE are used primarily to visualise complex patterns in two dimensions.
+  - `RunUMAP()` and `RunTSNE()` compute these embeddings, while `DimPlot()` visualises the results.
+
+- Parameters in UMAP and t-SNE control the balance between local and global structure.
+  - `min.dist` in UMAP determines how tightly points are allowed to pack together.
+  - `n.neighbors` in UMAP and `perplexity` in t-SNE determine the size of the local neighbourhood, where higher values reveal broader global patterns and lower values highlight small local clusters.
 :::
