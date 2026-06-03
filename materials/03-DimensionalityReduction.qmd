@@ -44,11 +44,9 @@ visium <- readRDS("precomputed/mouse_brain_normalised.rds")
 As a reminder, this object was created by:
 
 - Importing the raw data using `Load10X_Spatial()`, followed by QC and filtering to remove low-quality spots.
-- Normalising the data using three different methods:
+- Normalising the data using two different methods:
   - `NormalizeData()` with log-normalisation and `ScaleData()` for Z-scoring and regressing out confounders.
     Stored in the "Spatial" assay.
-  - Scran normalisation using `scran::quickCluster()` and `scuttle::pooledSizeFactors()`.
-    Stored in the "Scran" assay.
   - `SCTransform()` normalisation, which models technical variation and applies variance stabilisation.
     Stored in the "SCT" assay.
 
@@ -169,64 +167,6 @@ Again, we can visualise the variable genes using the `VariableFeaturePlot()` fun
 VariableFeaturePlot(visium, assay = "Spatial") +
   ggtitle("Highly Variable Genes in Spatial Assay")
 ```
-
-<!--
-Hugo note: I have kept this out, as it may be too much for these materials. But keeping it here as a reference for the future in case we want to include something.
-
-### HVGs with scran
-
-For the "Scran" assay, which contains the scran-normalised data, we use the method implemented in the `scran` package, which looks for genes that deviate from the mean-variance relationship directly in the log-normalised data.
-
-```r
-#| label: find-variable-genes-scran
-#| warning: false
-
-# Ensure Scran is the active assay
-DefaultAssay(visium) <- "Scran"
-
-# Assign variable genes to this assay using scran's method
-VariableFeatures(visium, assay = "Scran") <- visium[["Scran"]]$data |>
-  scran::modelGeneVar() |>
-  scran::getTopHVGs(n = 2000)
-```
-
-Unfortunately, the `VariableFeaturePlot()` function will not work in our manually added features.
-Instead, we can create the plot ourselves:
-
-```r
-#| label: variable-feature-plot-scran
-
-# Calculate means and variances per gene
-scranMeans <- rowMeans(visium[["Scran"]]$data)
-scranVars <- rowVars(visium[["Scran"]]$data)
-
-# Plot them with selected HVGs overlaid
-plot(scranMeans, scranVars)
-points(scranMeans[VariableFeatures(visium, assay = "Scran")],
-        scranVars[VariableFeatures(visium, assay = "Scran")],
-        col = "red")
-```
-
-:::{.callout-note collapse="true"}
-#### Intersection between methods
-
-We can see how many variable genes there are in common between the different approaches using a quick Venn diagram (from the `gplots` package):
-
-```r
-#| label: compare-hvgs-intersection
-
-# Venn diagram of variable genes across methods
-gplots::venn(list(
-  Spatial = VariableFeatures(visium, assay = "Spatial"),
-  Scran = VariableFeatures(visium, assay = "Scran"),
-  SCT = VariableFeatures(visium, assay = "SCT")
-))
-```
-
-In general, we can see that about half of the 2000 genes overlap between the three methods.
-SCT and Scran also have a good overlap between them, while the default method in Seurat (Spatial) has a smaller overlap with the other two.
-:::
--->
 
 ## Principal Component Analysis (PCA)
 
