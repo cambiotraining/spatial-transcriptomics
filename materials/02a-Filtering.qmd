@@ -21,7 +21,7 @@ knitr::opts_knit$set(root.dir = here::here("course_files"))
 - Apply spot-level filters to the spatial object and save the result.
 :::
 
-## Introduction
+## Data Exploration
 
 Quality control of spatial transcriptomics data is essential for producing reliable results in downstream steps.
 In this chapter, we work with a Visium mouse brain dataset [from 10x Genomics](https://www.10xgenomics.com/datasets/mouse-brain-serial-section-2-sagittal-anterior-1-standard).

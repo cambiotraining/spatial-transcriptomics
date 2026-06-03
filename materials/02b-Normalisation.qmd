@@ -241,7 +241,7 @@ visium <- visium |>
 #| label: normalise-or-read-preprocessed
 #| include: false
 
-# Save the preprocessed Seurat object if it doesn't exist already
+# Read the preprocessed Seurat object unless it doesn't exist
 if (!file.exists("precomputed/mouse_brain_normalised.rds")) {
   visium <- visium |>
     NormalizeData(assay = "Spatial") |>
@@ -314,12 +314,9 @@ visium[["Scran"]] <- CreateAssayObject(data = scranNormCts)
 # Store size factors in metadata
 visium$scranSizeFactors <- sizeFactors
 
-# Add a `scale.data` layer to the Scran assay
-visium <- visium |>
-  ScaleData(assay = "Scran", vars.to.regress = "percentMt_Spatial")
-
 # Save the preprocessed Seurat object if it doesn't exist already
 if (!file.exists("precomputed/mouse_brain_normalised.rds")) {
+  # Add a `scale.data` layer to the Scran assay
   visium <- visium |>
     ScaleData(assay = "Scran", vars.to.regress = "percentMt_Spatial")
   saveRDS(visium, file = "precomputed/mouse_brain_normalised.rds")
@@ -384,7 +381,8 @@ So far, we applied:
 In both cases, we regressed out mitochondrial percentage as a confounder.
 
 To compare methods, we run the same quick clustering workflow for each normalisation and visualise the cluster labels on the tissue image.
-Later chapters cover clustering in depth; here the goal is method comparison.
+We will cover clustering in depth in a [later chapter](04-Clustering.qmd).
+Here the goal is method comparison, so don't worry too much about the details of the implementation.
 
 ```{r}
 #| label: compare-normalization
@@ -408,12 +406,21 @@ visium <- visium |>
   FindClusters(resolution = 0.5, cluster.name = "scaledClusters")
 ```
 
-Plot the clustering results for these methods:
+The main result of interest to us are two new columns added to the metadata, `sctClusters` and `scaledClusters`, which contain the cluster labels for each normalisation method.
+
+```{r}
+#| label: show-metadata
+
+# View the metadata to confirm the new cluster columns
+head(visium[[]])
+```
+
+We can use the `SpatialDimPlot()` function to visualise the clustering results for these methods:
 
 ```{r}
 #| label: plot-normalization-comparison
 
-SpatialPlot(
+SpatialDimPlot(
   visium,
   group.by = c("sctClusters", "scaledClusters"),
   ncol = 2
