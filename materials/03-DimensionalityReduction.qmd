@@ -70,11 +70,10 @@ Both strategies are widely used, with two main goals:
 - **Computational efficiency**: Linear transformations like PCA compress the highly dimensional matrices, reducing the computational demand for downstream analyses. Because PCA is linear, it does not distort original distances, but it successfully discards uninformative noise from lowly or randomly expressed genes.
 - **Visualisation**: Non-linear transformations like t-SNE and UMAP are primarily used to plot data in 2D. Because expression patterns are complex, PCA alone cannot capture all nuanced differences in two dimensions. Non-linear methods deal with this complexity better, making them popular for visualisation.
 
-This process typically involves three main steps, illustrated below:
-
-![Dimensionality Reduction](images/dimred.excalidraw.svg)
-
+This process typically involves three main steps, illustrated below.
 We will apply these steps to our mouse brain Visium dataset.
+
+![Dimensionality reduction workflow covered in this section](images/dimred.excalidraw.svg)
 
 ## Feature Selection
 
