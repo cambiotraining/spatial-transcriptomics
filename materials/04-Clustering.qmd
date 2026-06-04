@@ -1,231 +1,517 @@
----
-title: Clustering of Spatial Transcriptomics Data
----
+# Graph-Based Clustering
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+# set the working directory to the course_files folder
+# make sure to run course_files/download_course_files.sh
+knitr::opts_knit$set(root.dir = here::here("course_files"))
+```
 
 ::: {.callout-tip}
 #### Learning Objectives
 
-- Cluster spatial transcriptomics data using Seurat
-- Visualize clusters using UMAP and spatial plots
-- Identify marker genes for clusters
-- Understand the interpretation of clustering results
+- Explain how graph-based clustering partitions spots based on expression similarity in reduced-dimensional space.
+- Construct nearest-neighbour and shared nearest-neighbour graphs.
+- Apply graph-based clustering with different algorithms and resolutions to generate alternative clusterings.
+- Visualise clustering results on UMAP and tissue coordinates to compare cluster structure and spatial coherence.
+- Justify a clustering choice using tissue knowledge and the limitations of expression-only graph-based methods.
 :::
 
-## Clustering Spatial Transcriptomics Data
+## Setup
 
-Clustering is a crucial step in spatial transcriptomics analysis, allowing us to group cells based on their gene expression profiles.
-In Seurat, basic clustering can be performed using the `FindClusters` function after dimensionality reduction techniques like PCA or UMAP.
-This clustering helps to identify distinct cell populations, but is not spatially aware.
-Seurat offers different clustering algorithms, with the Louvain algorithm being the default choice.
-The resolution parameter in the `FindClusters` function controls the granularity of the clustering, with higher values leading to more clusters.
-The default resolution is 0.8, but this can be adjusted based on the dataset and the desired level of detail.
-As default, these clusters are stored in the metadata of the Seurat object under the name "seurat_clusters", which can be changed using the `cluster.name` parameter.
+We continue working with the sagittal mouse brain dataset from previous chapters.
 
-Before clustering we need to compute a nearest neighbor graph using the `FindNeighbors` function.
-This function constructs a graph based on the PCA results, which is then used for clustering.
+::: {.callout-note collapse="true"}
+#### Click to expand
 
-```r
-#load dplyr for data manipulation
-library(dplyr)
+Start by loading the required libraries and the Seurat object.
 
-#Perform default clustering using Louvain algorithm on the PCA results
-visium <- FindNeighbors(visium, reduction = "pca", dims = 1:30)
-visium <- FindClusters(visium, resolution = 0.5, cluster.name = "Louvain_05")
+```{r}
+#| label: load-visium-data
+
+# Load libraries
+library(Seurat) # single-cell and spatial analysis toolkit
+library(sparseMatrixStats)
+library(paletteer) # colour palettes
+library(ggplot2) # plotting
+library(dplyr) # data manipulation
+library(patchwork) # combining plots
+
+# Load the Seurat object from the previous chapter
+visium <- readRDS("precomputed/mouse_brain_dimred.rds")
 ```
 
-We can visualize the clustering results using UMAP or spatial plots.
-The `DimPlot` function can be used to create UMAP plots, while the `SpatialDimPlot` function is used for spatial visualizations.
+```{r}
+#| label: clean-visium-data
+#| include: false
 
-```r
-#UMAP plot of clusters
-umap_louvain05 <- DimPlot(
+# Remove leftover clusterings from previous chapters
+# Need to fix this in the precomputed object to avoid confusion
+visium$sctClusters <- NULL
+visium$scaledClusters <- NULL
+visium[["SCT_nn"]] <- NULL
+visium[["SCT_snn"]] <- NULL
+visium[["Spatial_nn"]] <- NULL
+visium[["Spatial_snn"]] <- NULL
+```
+
+As a reminder, this object was created by:
+
+- Importing the raw data using `Load10X_Spatial()`, followed by QC and filtering to remove low-quality spots.
+- Data normalisation using `SCTransform()`, which models technical variation and applies variance stabilisation.
+  Stored in the "SCT" assay.
+- Applying dimensionality reduction using PCA, UMAP and t-SNE.
+:::
+
+## Overview
+
+Clustering is a crucial step in spatial transcriptomics analysis, grouping spots/cells on the tissue based on their gene expression profiles to identify distinct cell populations and tissue structures.
+
+Several clustering approaches exist, each with different strengths and limitations.
+
+- **Classical clustering methods** such as k-means and hierarchical clustering become computationally expensive and unreliable in high-dimensional data like single-cell and spatial transcriptomics.
+  These methods work on the distances between all pairs of spots/cells, which becomes extremely computationally expensive when dealing with tens of thousands of genes and thousands or millions of spots/cells.
+  For these reasons, classical methods are usually not used in spatial transcriptomics analysis and we do not cover them here.
+
+- **Graph-based clustering** offers a more scalable alternative.
+  Rather than working on distances between all pairs of spots, graph-based methods first construct a neighbourhood graph based on expression similarity, then partition that graph to find clusters.
+  This approach is computationally efficient at scale and performs well on high-dimensional data, making it the popular choice in single-cell and spatial analysis.
+  However, this approach treats all spots independently without accounting for their spatial location.
+
+- **Spatially-aware clustering methods** address this limitation.
+  These newer approaches explicitly model spatial proximity alongside expression similarity to better respect the tissue structure.
+
+In this section, we focus on graph-based clustering with Seurat, with spatially-aware clustering covered later.
+Graph-based clustering includes these main steps:
+
+1. Constructing a nearest-neighbour graph based on expression similarity between the spots in reduced-dimensional space.
+2. Partition the graph using graph-based clustering algorithms that identify densely connected regions.
+   The resolution of the partition (i.e. how many clusters you find) can be controlled via specific parameters.
+3. Visualise the clusters on UMAP and spatial coordinates to assess their quality and spatial coherence.
+
+![Clustering workflow overview covered in this section](images/clustering.excalidraw.svg)
+
+## Neighbourhood Graph
+
+Neighbourhood graphs are usually built based on the Euclidean distance between each pair of cells on PCA space.
+The distance metric can be configured, but Eucilidean is a popular and default choice.
+
+Once the pairwise distances between cells have been calculated, there are two approaches to build the neighbourhood graph:
+
+- **Nearest-neighbour (NN)**: Each cell is connected to its *k* most similar cells.
+  For example, if k = 20, a cell will be connected to the 20 cells with the lowest (Euclidean) distance to it.
+  While intuitive, this method doesn't take cell density into account.
+
+- **Shared nearest-neighbour (SNN)**: Cells are connected if they share at least *k* neighbours with each other.
+  This method is more robust to differences in cell density, as it considers the local neighbourhood structure rather than just pairwise distances.
+
+This neighbourhood graph becomes the basis for the downstream clustering.
+The choice of *k* (number of neighbours) and the number of PCA dimensions used can both influence the graph structure and downstream clusters:
+
+- Larger k values produce denser, more connected graphs with fewer, larger clusters.
+  Smaller k values give sparser graphs with more granular clustering.
+- Using more PCA dimensions includes more subtle variation, whilst using fewer dimensions emphasises dominant patterns.
+
+You can create both of these graphs using the `FindNeighbors()` function.
+
+```{r}
+#| label: find-neighbours
+
+# Build a nearest-neighbour graph using the first 50 PCA dimensions
+visium <- FindNeighbors(
+  visium,
+  k.param = 20,
+  reduction = "pca",
+  dims = 1:50
+)
+
+# Check that the graph has been added to the Seurat object
+Graphs(visium)
+```
+
+Both graphs have been added to the Seurat object under the names "SCT_nn" and "SCT_snn".
+
+## Clustering
+
+Seurat offers the `FindClusters()` function to perform graph-based clustering on the nearest-neighbour graph.
+It uses the SNN graph by default, but you can specify the NN graph if you prefer.
+
+```{r}
+#| label: find-clusters-default
+#| results: "hide"
+
+# Find clusters using the default parameters
+visium <- FindClusters(visium)
+```
+
+After running the function, Seurat adds a new column to the metadata called `seurat_clusters` containing the cluster assignment for each spot (confirm this with `head(visium[[]])`).
+We can use this variable to colour these clusters on a UMAP and spatial plot:
+
+```{r}
+#| label: clustering-visualisation-default
+
+# UMAP plot of clusters
+umap_clusters <- DimPlot(
   visium,
   reduction = "umap",
-  group.by = "Louvain_05",
-  label = TRUE
+  group.by = "seurat_clusters"
 ) +
-  ggtitle("Louvain Clusters (res=0.5)")
-#Spatial plot of clusters
-spatial_louvain05 <- SpatialDimPlot(
+  ggtitle("Default clustering") +
+  coord_equal() +
+  theme_void()
+
+# Spatial plot of clusters
+spatial_clusters <- SpatialDimPlot(
   visium,
-  group.by = "Louvain_05",
-  label = TRUE
-) +
-  ggtitle("Louvain Clusters (res=0.5)")
+  group.by = "seurat_clusters"
+)
+
+# Assemble the plots side by side
+umap_clusters + spatial_clusters & theme(legend.position = "none")
 ```
 
-We would like to compare these results to the ones achieved with Leiden clustering.
+We can see that the clusters are reasonably well separated on the UMAP and align quite well with the spatial structure of the tissue.
 
-```r
-#Perform Leiden clustering
+However, the default parameters may not be optimal for your data and it's important not to blindly rely on them.
+
+::: {.callout-tip collapse="true"}
+#### Visualisation tips
+
+You may notice above we've done some customisation of the plots:
+
+- As the coordinates in UMAP plots are arbitrary, we can use `coord_equal()` to ensure that the x and y axes have the same scale and avoid distortions in the visualisation.
+- For the same reason, we can use `theme_void()` to remove the axes and background from the UMAP plot, which are not meaningful and can distract from the clusters.
+- Finally, we can use `theme(legend.position = "none")` to remove the legend, which is not necessary when the clusters are labelled directly on the plot.
+- Instead of setting the theme individually for each plot, we can use the `&` operator from the `patchwork` package to apply it to all plots in the grid at once.
+  Learn more about `patchwork` configurations [in their user manual](https://patchwork.data-imaginist.com/).
+:::
+
+## Clustering Parameters
+
+There are two key parameters to configure when performing clustering:
+
+- `algorithm`: the graph partitioning algorithm to use.
+  Seurat offers four algorithms: (1) **Louvain** (default); (2) **Louvain + multilevel refinement**; (3) **Smart Local Moving (SLM)**; (4) **Leiden**.
+
+- `resolution`: controls the granularity of the clusters.
+
+We will not go into the technical details of how these algorithms work, but in general **Leiden is the recommended starting point**.
+This algorithm is an improvement on Louvain that ensures clusters are internally connected.
+It can also give more reproducible clusterings compared to Louvain.
+
+Having said that, clustering is itself an artificial partioning of a continuous landscape of gene expression, so there is no single "best" algorithm.
+Likewise, there is no universally "correct" resolution.
+The choice may depending on whether you expect many distinct populations or a few broad types.
+
+It is often useful to test a few algorithms and resolutions to check that your main conclusions are robust.
+We will do this by comparing two algorithms (Louvain and Leiden) at two different resolutions (0.5 and 0.8).
+
+### Algorithm Comparison
+
+Here, we create two clusterings using the default resolution of 0.5: Louvain and Leiden.
+We use the `cluster.name` parameter to give each clustering a meaningful name in the metadata, which is useful to keep track of which result came from which run.
+
+```{r}
+#| label: clustering
+#| warning: false
+#| results: "hide"
+
+# Try multiple clustering algorithms and resolutions
+visium <- FindClusters(
+  visium,
+  resolution = 0.5,
+  algorithm = 1,
+  cluster.name = "Louvain_05"
+)
 visium <- FindClusters(
   visium,
   resolution = 0.5,
   algorithm = 4,
   cluster.name = "Leiden_05"
 )
-#UMAP plot of Leiden clusters
+```
+
+We now have two new columns in the metadata, and can visualise these again on a UMAP and spatial plot to compare the results.
+
+```{r}
+#| label: clustering-visualisation-05
+#| code-fold: true
+
+# UMAP plot of clusters
+umap_louvain05 <- DimPlot(
+  visium,
+  reduction = "umap",
+  group.by = "Louvain_05",
+  label = TRUE
+) +
+  ggtitle("Louvain (res = 0.5)") +
+  coord_equal() +
+  theme_void()
+
+# Spatial plot of clusters
+spatial_louvain05 <- SpatialDimPlot(
+  visium,
+  group.by = "Louvain_05",
+  label = TRUE,
+  label.size = 4
+)
+
+# UMAP plot of Leiden clusters
 umap_leiden05 <- DimPlot(
   visium,
   reduction = "umap",
   group.by = "Leiden_05",
   label = TRUE
 ) +
-  ggtitle("Leiden Clusters (res=0.5)")
-#Spatial plot of Leiden clusters
+  ggtitle("Leiden (res = 0.5)") +
+  coord_equal() +
+  theme_void()
+
+# Spatial plot of Leiden clusters
 spatial_leiden05 <- SpatialDimPlot(
   visium,
   group.by = "Leiden_05",
-  label = TRUE
-) +
-  ggtitle("Leiden Clusters (res=0.5)")
+  label = TRUE,
+  label.size = 4
+)
 
-umap_louvain05 + umap_leiden05
-spatial_louvain05 + spatial_leiden05
+# Grid of plots
+(umap_louvain05 + spatial_louvain05) /
+  (umap_leiden05 + spatial_leiden05) &
+  theme(legend.position = "none")
 ```
 
-::: {.callout-tip collapse="true"}
-#### Result
+In general, both algorithms produce clusters of similar sizes and distributions at this resolution.
+They are broadly coherent on the spatial plot, with spots forming spatially-connected clusters.
+The Louvain algorithm resulted in more clusters, though some of them are quite small (e.g. 10 and 11).
+It is unclear whether they represent biologically meaningful populations or overfitting to technical noise.
 
-![Left: UMAP of Louvain Clustering with 0.5 resolution; Right: UMAP of Leiden Clustering with 0.5 resolution, all other parameters are default and stay the same. ](graphs/louvain05_leiden05.png){fig-align="center"}
+It can be hard to distinguish clusters due to the large number of clusters and the colour scheme.
+So, it may be worth sometimes **highlighting specific clusters of interest** to see where they are located on the tissue and UMAP.
 
-It's hard to decide which clustering is better just by looking at the plots.
-Currently it looks like we have not chosen the optimal resolution, as we have big clusters that could be further subdivided.
-We can try a higher resolution to see if we can identify more distinct clusters.
+For example, one notable exception to the spatial coherence is Louvain cluster 5 (Leiden cluster 4), which appears to be split across two spatial regions and on the UMAP.
+Let's highlight this cluster on the spatial plot to see where it is located.
 
-We can look at the spatial distribution of the clusters to see if they make sense biologically.
-If we see clusters that are spatially coherent and correspond to known tissue structures, it suggests that the clustering is capturing meaningful biological variation.
+```{r}
+#| label: highlight-cluster
 
-![Left: Spatial plot of Louvain Clustering with 0.5 resolution; Right: Spatial plot of Leiden Clustering with 0.5 resolution, all other parameters are default and stay the same. ](graphs/spatial_louvain05_leiden05.png){fig-align="center"}
-:::
-
-Now, let's try a higher resolution of 0.8 for both clustering algorithms and compare the results.
-
-```r
-#Perform Louvain clustering with higher resolution
-visium <- FindClusters(visium, resolution = 0.8, cluster.name = "Louvain_08")
-#UMAP plot of clusters
-umap_louvain08 <- DimPlot(
+# Use cells.highlight to highlight specific clusters on the spatial plot
+# The WhichCells() function allows us to select cells based on their cluster assignment
+SpatialDimPlot(
   visium,
-  reduction = "umap",
-  group.by = "Louvain_08",
-  label = TRUE
+  cells.highlight = WhichCells(visium, expression = Leiden_05 == 4)
 ) +
-  ggtitle("Louvain Clusters (res=0.8)")
-#Spatial plot of clusters
-spatial_louvain08 <- SpatialDimPlot(
-  visium,
-  group.by = "Louvain_08",
-  label = TRUE
-) +
-  ggtitle("Louvain Clusters (res=0.8)")
+  ggtitle("Leiden Cluster 4 Spatial Location")
+```
 
-#Perform Leiden clustering with higher resolution
+Is this a reasonable clustering result?
+As we've emphasised before, **knowledge of your tissue and expected cell types is crucial** to interpret whether these clusters are meaningful or overfitting noise.
+
+### Resolution Comparison
+
+In both cases, at resolution 0.5, both algorithms produce relatively coarse clustering with large clusters.
+We can test whether a higher resolution reveals more biologically meaningful structure at a finer scale.
+Let's compare this with the resolution of 0.8, which should produce more clusters and reveal finer structure if it exists in the data.
+
+```{r}
+#| label: clustering-08
+#| results: "hide"
+#| code-fold: true
+
+# Find clusters at resolution 0.8
+visium <- FindClusters(
+  visium,
+  resolution = 0.8,
+  algorithm = 1,
+  cluster.name = "Louvain_08"
+)
 visium <- FindClusters(
   visium,
   resolution = 0.8,
   algorithm = 4,
   cluster.name = "Leiden_08"
 )
-#UMAP plot of Leiden clusters
+
+# UMAP and spatial plot for Louvain
+umap_louvain08 <- DimPlot(
+  visium,
+  reduction = "umap",
+  group.by = "Louvain_08",
+  label = TRUE
+) +
+  ggtitle("Louvain (res = 0.8)") +
+  coord_equal() +
+  theme_void()
+
+spatial_louvain08 <- SpatialDimPlot(
+  visium,
+  group.by = "Louvain_08",
+  label = TRUE,
+  label.size = 4
+)
+
+# UMAP and spatial plot for Leiden
 umap_leiden08 <- DimPlot(
   visium,
   reduction = "umap",
   group.by = "Leiden_08",
   label = TRUE
 ) +
-  ggtitle("Leiden Clusters (res=0.8)")
-#Spatial plot of Leiden clusters
+  ggtitle("Leiden (res = 0.8)") +
+  coord_equal() +
+  theme_void()
+
 spatial_leiden08 <- SpatialDimPlot(
   visium,
   group.by = "Leiden_08",
-  label = TRUE
-) +
-  ggtitle("Leiden Clusters (res=0.8)")
+  label = TRUE,
+  label.size = 4
+)
 
-umap_louvain08 + umap_leiden08
-spatial_louvain08 + spatial_leiden08
+# Grid of plots
+(umap_louvain08 + spatial_louvain08) /
+  (umap_leiden08 + spatial_leiden08) &
+  theme(legend.position = "none")
 ```
 
-::: {.callout-tip collapse="true"}
-#### Result
+As expected, increasing the resolution to 0.8 increases the number of clusters.
+We went from `r length(unique(visium$Louvain_05))` to `r length(unique(visium$Louvain_08))` for Louvain, and from `r length(unique(visium$Leiden_05))` to `r length(unique(visium$Leiden_08))` for Leiden.
 
-![Left: UMAP of Louvain Clustering with 0.8 resolution; Right: UMAP of Leiden Clustering with 0.8 resolution, all other parameters are default and stay the same. ](graphs/louvain08_leiden08.png){fig-align="center"}
+Interestingly, for Louvain this change in resolution only resulted in one more cluster.
+But the actual change is more complex than that.
+For example:
 
-Clearly Louvain clustering is more sensitive to changes in the resolution parameter, as we can see a big difference between resolution 0.5 and 0.8.
-The Leiden algorithm is more robust to changes in the resolution parameter, as the clustering results are more similar between the two resolutions.
-However, the Leiden clustering at resolution 0.8 seems to be more reasonable than the Louvain clustering at the same resolution, as we can see more distinct clusters in the spatial plot.
+- The previously highlighted cluster 5 is now split into two clusters (now called 5 and 12).
+  This may be a good thing, if those are biologically distinct.
+- However, the new clusters 3 and 5 are now less spatially coherent, and in fact contain a mixture of spots of what used to be better spatially-separated clusters at resolution 0.5.
 
-![Left: Spatial plot of Louvain Clustering with 0.8 resolution; Right: Spatial plot of Leiden Clustering with 0.8 resolution, all other parameters are default and stay the same. ](graphs/spatial_louvain08_leiden08.png){fig-align="center"}
+On the other hand, for Leiden, increasing the resolution to 0.8 resulted in three more clusters, but this increase seems to be more spatially coherent with the previous resolution.
+For example, old cluster 1 has been split into three clusters (1, 10 and 11), and the old cluster 2 into two (now 2 and 9).
+
+::: {.callout-note collapse="true"}
+#### Agreement between clusters using Adjusted Rand Index
+
+In the [Normalisation chapter](02b-Normalisation.qmd), we introduced the Adjusted Rand Index (ARI) as a measure of agreement between two clusterings.
+We can use this to quantify how similar the clusterings are across algorithms and resolutions.
+
+```{r}
+#| label: ari-comparison
+
+# Create a data frame of pairwise comparisons
+ari_comparisons <- data.frame(
+  louvain05_vs_leiden05 = mclust::adjustedRandIndex(
+    visium$Louvain_05,
+    visium$Leiden_05
+  ),
+  louvain08_vs_leiden08 = mclust::adjustedRandIndex(
+    visium$Louvain_08,
+    visium$Leiden_08
+  ),
+  louvain05_vs_louvain08 = mclust::adjustedRandIndex(
+    visium$Louvain_05,
+    visium$Louvain_08
+  ),
+  leiden05_vs_leiden08 = mclust::adjustedRandIndex(
+    visium$Leiden_05,
+    visium$Leiden_08
+  )
+)
+
+# Print transposed for better readability
+t(ari_comparisons)
+```
+
+We can see that, in general, the agreement based on this metric is quite high (>0.85 in all cases).
+This suggests that the main structure of the clusters is consistent across algorithms and resolutions, even if there are some differences in the finer details as highlighted in our discussion above.
 :::
 
-Apart from visual inspection, we can also use domain knowledge to evaluate the clustering results.
-For example, if we expect 20 cell types in the tissue, we can choose the clustering that results in a similar number of clusters.
-We have to remember though, that clusters in spatial transcriptomics do not necessarily correspond to cell types, as there can be multiple clusters per cell type due to different states or subtypes.
+## Which Clustering?
 
-This type of clustering is not spatially aware, meaning that it does not take into account the spatial location of the spots.
-There are more advanced clustering methods that do consider spatial information, such as BANKSY, which we will cover later in this course.
+As we've been seeing throughout the course, there is no single "best" answer for this sort of question when it comes to transcriptomic analysis.
+The visual exploration we did is informative, but critically you should **use domain knowledge to guide your choices**.
+You can ask yourself the following:
 
-### Identifying Marker Genes for Clusters
+- Which result better captures known tissue structure?
+- Which produces clusters that are spatially coherent?
+- How many clusters do you expect biologically?
+- Are you interested in identifying rare subpopulations (higher resolution) or broad cell types (lower resolution)?
 
-After clustering, we can identify marker genes for each cluster using the `FindAllMarkers` function.
-This function performs differential expression analysis to find genes that are significantly upregulated in each cluster compared to all other clusters.
-We are going to select only positive markers, meaning genes that are more highly expressed in the cluster of interest compared to other clusters.
-We will also set a minimum percentage of cells expressing the gene (`min.pct`) and a log-fold change threshold (`logfc.threshold`) to filter the results.
+Note that clusters in spatial transcriptomics do not always correspond one-to-one with cell types.
+A single cell type may be split across multiple clusters if it exists in distinct transcriptional states.
+Conversely, a cluster may contain multiple cell types if they share similar gene expression profiles.
+You can use marker gene analysis (covered in the next section) to interpret what each cluster represents.
 
-```r
-#Set the identity class to the clustering we want to find markers for
+One important limitation of graph-based clustering, which we've already seen, is that it does not make use of spatial information.
+All spots are treated independently based only on their expression similarity.
+As an alternativel, spatially-aware methods explicitly incorporate spatial proximity to calculate clusterings.
+We cover spatially-aware clustering with BANKSY in a [follow-up chapter](08-TissueArchitecture.qmd).
+
+## Exporting the Object
+
+Once you decide on a clustering, you can set those clusters as default cell identities for convenience in downstream analysis:
+
+```{r}
+#| label: set-identities
+
+# Set cell identities to the Leiden clustering at resolution 0.8
 Idents(visium) <- visium$Leiden_08
-# Identify marker genes for each cluster
-markers <- FindAllMarkers(
-  visium,
-  only.pos = TRUE,
-  min.pct = 0.25,
-  logfc.threshold = 0.25,
-  pvalue.cutoff = 0.05
-)
-# View top markers for each cluster
-top10 <- markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
-
-#Visualise the 4 top markers for cluster 1
-fp <- SpatialFeaturePlot(
-  visium,
-  features = top10[top10$cluster == 1, ]$gene[1:4],
-  ncol = 2
-)
-# Visualise the spatial location of cluster 1
-sp <- SpatialDimPlot(
-  visium,
-  cells.highlight = WhichCells(visium, idents = "1")
-) +
-  ggtitle("Cluster 1 Spatial Location")
-fp + sp
 ```
 
-::: {.callout-tip collapse="true"}
-#### Result
+This allows you, for example, to omit the `group.by` parameter in visualisation functions:
 
-![Top 4: Spatial Feature Plot of top 4 markers for cluster 1; Bottom: Spatial location of cluster 1 highlighted in the tissue.](graphs/fp_sp.png){fig-align="center"}
-:::
+```{r}
+#| label: visualise-final-clusters
+#| eval: false
 
-By default, the `FindAllMarkers` function uses the Wilcoxon rank-sum test for differential expression analysis.
-Other tests can be specified using the `test.use` parameter.
-The results include the average log-fold change, p-value, and adjusted p-value for each gene in each cluster.
-Another option is to use the MAST test, which is specifically designed for single-cell data and can account for cellular detection rates, but is computationally more intensive and not always optimal for spatial transcriptomics data.
+SpatialDimPlot(visium, label = TRUE)
+```
 
-## Conclusion
+To be clear, this is done simply for convenience.
+It means that if you decide to change the identities later, you don't need to change all the rest of the code.
 
-In this chapter, we have learned how to perform clustering on spatial transcriptomics data using Seurat.
-We have explored different clustering algorithms, such as Louvain and Leiden, and discussed the impact of the resolution parameter on the clustering results.
-We have also identified marker genes for each cluster using differential expression analysis.
-Clustering is a crucial step in spatial transcriptomics analysis, as it helps to identify distinct cell populations and understand the underlying biology of the tissue.
+Also remember, that it's always a good idea to save your intermediate analysis, so you can resume at a later point without having to repeat all the previous steps.
+
+```{r}
+#| label: save-object
+#| eval: false
+
+# Save the object for future use
+saveRDS(visium, "results/mouse_brain_clustering.rds")
+```
+
+```{r}
+#| label: save-participant-object
+#| include: false
+
+saveRDS(visium, "precomputed/mouse_brain_clustering.rds")
+```
 
 ## Summary
+
 ::: {.callout-tip}
 #### Key Points
 
-- Clustering is essential for identifying distinct cell populations in spatial transcriptomics data.
-- Seurat provides multiple clustering algorithms, with Louvain and Leiden being popular choices.\
-- The resolution parameter controls the granularity of the clustering, with higher values leading to more clusters.
-- Marker genes for each cluster can be identified using the `FindAllMarkers` function, which performs differential expression analysis.
+- Graph-based clustering builds a neighbourhood graph from expression similarity and partitions it into clusters.
+  - Shared nearest-neighbour (SNN) graphs are the most popular choice and recommended in most workflows.
+  - The `FindNeighbors()` function in Seurat builds NN and SNN graphs from selected PCA dimensions.
+
+- Clustering implementations include options for choosing clustering algorithm and resolution.
+  - Louvain and Leiden are popular clustering algorithms, with Leiden often recommended for better-connected clusters.
+  - The `FindClusters()` in Seurat performs clustering with `algorithm` and `resolution` parameters available to tune these options.
+
+- The resolution parameter controls clustering granularity.
+  - Higher resolution generally produces more, finer clusters.
+  - Comparing outputs across resolutions helps check whether conclusions are robust.
+
+- UMAP and spatial plots reveal different aspects of cluster quality.
+  - UMAP helps assess expression-space separation.
+  - Spatial plots help assess whether clusters are spatially coherent in tissue.
+
+- Final clustering choices should be informed by biological expectations, not defaults alone.
+  - Use known tissue structure and expected populations to judge whether splits and merges are meaningful.
+  - Spatially-aware methods may better preserve tissue structure when spatial context is important.
 :::
