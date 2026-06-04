@@ -152,7 +152,9 @@ top5 |>
 We can visualise the expression of these marker genes across the tissue using `SpatialFeaturePlot()`, which shows the spatial distribution of gene expression.
 
 ```{r}
-# Visualise the 4 top markers for cluster 1
+#| label: spatial-feature-top5
+
+# Visualise the 5 top markers for cluster 1
 feature_plot <- SpatialFeaturePlot(
   visium,
   features = top5 |> filter(cluster == 1) |> pull(gene),
