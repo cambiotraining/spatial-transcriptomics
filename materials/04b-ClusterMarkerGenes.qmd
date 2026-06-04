@@ -1,0 +1,210 @@
+---
+format:
+  html:
+    code-summary: "Show the code"
+---
+
+# Clustering of Spatial Transcriptomics Data
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+# set the working directory to the course_files folder
+# make sure to run course_files/download_course_files.sh
+knitr::opts_knit$set(root.dir = here::here("course_files"))
+```
+
+::: {.callout-tip}
+#### Learning Objectives
+
+- TODO
+:::
+
+## Setup
+
+We continue working with the sagittal mouse brain dataset from previous chapters.
+
+::: {.callout-note collapse="true"}
+#### Click to expand
+
+Start by loading the required libraries and the Seurat object.
+
+```{r}
+#| label: load-visium-data
+
+# Load libraries
+library(Seurat) # single-cell and spatial analysis toolkit
+library(sparseMatrixStats)
+library(paletteer) # colour palettes
+library(ggplot2) # plotting
+library(dplyr) # data manipulation
+library(patchwork) # combining plots
+
+# Load the Seurat object from the previous chapter
+visium <- readRDS("precomputed/mouse_brain_clustering.rds")
+```
+
+As a reminder, this object was created by:
+
+- Importing the raw data using `Load10X_Spatial()`, followed by QC and filtering to remove low-quality spots.
+- Data normalisation using `SCTransform()`, which models technical variation and applies variance stabilisation.
+  Stored in the "SCT" assay.
+- Applying dimensionality reduction using PCA, UMAP and t-SNE.
+- Clustering the data using graph-based clustering.
+  The clusters we use in this chapter were generated using the Leiden algorithm at a resolution of 0.8 and were set the the default cell identities (`Idents(visium)`).
+:::
+
+## Overview
+
+Following from our clustering, a natural next step is to understand what each cluster represents biologically.
+To do this, we identify **marker genes**, i.e. genes that are differentially expressed between the clusters.
+
+It is worth noting that this procedure is statistically flawed and can lead to misleading conclusions.
+The reason being that our clusters were defined based on gene expression patterns, so we are not testing independent hypotheses.
+In other words, we should expect to find significant markers for each cluster, as the clusters themselves were defined based on gene expression pattern differences.
+This is true, even if the clusters are not biologically meaningful.
+For that reason, this analysis should be considered **exploratory and hypothesis-generating**, rather than a rigorous statistical test.
+The marker genes we identify can be used to assign biological identity to the clusters, but this should be done with caution and ideally **validated using external data or experiments**.
+
+There are several statistical tests used for marker gene identification.
+For the reason mentioned above, we shouldn't worry too much about being "statistically rigorous" here, so simple approaches are often sufficient.
+In fact, one of the most commonly used tests is the **Wilcoxon rank-sum test**, which is a generic non-parametric test that compares the ranking of expression of each gene in one cluster against the others.
+This test is robust to outliers and does not assume a specific distribution.
+
+Tests specifically designed for single-cell data (e.g. MAST) can better account for variable detection rates across cells, but can be computationally more intensive.
+For spatial transcriptomics data with fewer cells and often lower sparsity than single-cell data, the Wilcoxon test typically performs well and is sufficiently fast.
+
+## Find Marker Genes
+
+Seurat provides the function `FindAllMarkers()` to perform differential expression analysis between a target cluster and all other clusters.
+
+Some critical parameters of this function to consider are:
+
+- **`only.pos`**: If `TRUE`, only returns markers that are more highly expressed in the cluster of interest.
+- **`min.pct`**: The minimum percentage of cells/spots in the cluster where the gene is detected (default 0.1).
+  Raising this threshold prevents genes expressed in just a few spots from dominating the marker list.
+- **`logfc.threshold`**: the minimum log-fold change in expression for a gene to be considered for testing.
+
+Both `min.pct` and `logfc.threshold` are should be set to relatively permissive values, as their main purpose is to reduce the computational burden of testing genes that are unlikely to be markers.
+These parameters trade off sensitivity (finding all true markers) against specificity (avoiding false positives).
+Stricter thresholds produce fewer, higher-confidence markers, while relaxed thresholds result in more markers but may include noisy results.
+
+Let's apply `FindAllMarkers()` to our Visium data and explore the results.
+
+```{r}
+#| label: find-markers
+
+# Identify marker genes for each cluster
+# Expressed in at least 5% of spots in the cluster, with a log-fold change of at least 0.25
+markers <- FindAllMarkers(
+  visium,
+  only.pos = TRUE,
+  min.pct = 0.25,
+  logfc.threshold = 0.25
+)
+
+# The result is a standard data.frame
+head(markers)
+```
+
+The result of this function is a standard R data frame with the following columns:
+
+- `pval` is the p-value from the statistical test
+- `avg_log2FC` is the average log2 fold change of the gene in the cluster compared to others
+- `pct.1` is the percentage of spots in the cluster where the gene is detected
+- `pct.2` is the percentage of spots in the other clusters where the gene is detected
+- `p_val_adj` is the p-value adjusted for multiple testing
+- `cluster` is the cluster for which the gene is a marker
+- `gene` is the name of the gene
+
+## Filtering Results
+
+We can manipulate the output table using `dplyr` (part of `tidyverse`), to combine several criteria to find the most potentially interesting markers.
+
+For example, in the code below, we filter for significant markers (adjusted p-value < 0.05).
+Then, for each cluster, we take the top 5 genes with the highest log-fold change.
+
+```{r}
+#| label: top-markers
+
+# View top 5 markers for each cluster
+top5 <- markers |>
+  # filter for significant markers (adjusted p-value < 0.05)
+  filter(p_val_adj < 0.05) |>
+  # then for each cluster
+  group_by(cluster) |>
+  # take the top 5 genes with the highest log-fold change
+  slice_max(avg_log2FC, n = 5) |>
+  # sort them by cluster and descending log-fold change
+  arrange(cluster, desc(avg_log2FC)) |>
+  # reset grouping
+  ungroup()
+
+# Genes in cluster 1
+top5 |>
+  filter(cluster == 1) |>
+  pull(gene)
+```
+
+We can visualise the expression of these marker genes across the tissue using `SpatialFeaturePlot()`, which shows the spatial distribution of gene expression.
+
+```{r}
+# Visualise the 4 top markers for cluster 1
+feature_plot <- SpatialFeaturePlot(
+  visium,
+  features = top5 |> filter(cluster == 1) |> pull(gene),
+  ncol = 2
+)
+
+# Visualise the spatial location of cluster 1
+cluster_plot <- SpatialDimPlot(
+  visium,
+  cells.highlight = WhichCells(visium, idents = "1")
+) +
+  ggtitle("Cluster 1 Spatial Location")
+
+# Plot side by side
+feature_plot + cluster_plot
+```
+
+Another way you can filter this table is based on the `pct.1` and `pct.2` columns, which represent the fraction of spots where the gene was detected in the target cluster and in other clusters, respectively.
+For example, below we set the very strict criteria that the gene has to be detected in all spots of the target spot, and in no more than 50% of the rest of the spots:
+
+```{r}
+#| label: filter-by-pct
+
+# Filter on percent detected
+top_by_pct <- markers |>
+  filter(p_val_adj < 0.05 & pct.1 == 1 & pct.2 < 0.5)
+
+# Count how many genes we have per cluster
+top_by_pct |>
+  count(cluster)
+```
+
+This only returns `r nrow(top_by_pct)` in only a few of the clusters.
+We could visualise these to see how specifically localised they are in our tissue:
+
+```{r}
+#| label: spatial-feature-top-pct
+
+# Visualise the top markers based on pct filtering
+SpatialFeaturePlot(
+  visium,
+  features = top_by_pct$gene,
+  ncol = 3
+)
+```
+
+We could follow-up by comparing these markers to literature or reference datasets, to start assigning biological meaning identity to these clusters.
+
+## Summary
+
+::: {.callout-tip}
+#### Key Points
+
+- TODO
+:::

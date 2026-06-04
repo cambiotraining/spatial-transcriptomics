@@ -43,7 +43,8 @@ Download and unzip the folder to your Desktop to follow along with the materials
     "paletteer",
     "Rfast2",
     "Seurat",
-    "hdf5r"
+    "hdf5r",
+    "leidenbase",
     "bioc::clusterProfiler",
     "bioc::org.Hs.eg.db",
     "bioc::glmGamPoi",
