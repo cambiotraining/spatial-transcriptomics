@@ -12,11 +12,12 @@ knitr::opts_knit$set(root.dir = here::here("course_files"))
 ```
 
 ::: {.callout-tip}
-#### Learning Objectives
+### Learning Objectives
 
-- Identify and characterise tissue architecture using BANKSY
-- Compare tissue architecture to cell type distributions and non-spatially informed clustering
-- Analyse correlations between tissue architecture and spatially variable genes
+- Use BANKSY to augment gene expression data with spatial features and perform spatially-aware clustering.
+- Interpret BANKSY clusters and explain how they differ from non-spatial clustering results.
+- Identify relationships between BANKSY clusters, spatially variable genes, and cell type identities.
+- Adjust BANKSY parameters (`lambda` and `k_geom`) to control the balance between spatial coherence and transcriptional similarity.
 :::
 
 ## Setup
@@ -56,33 +57,27 @@ As a reminder, this object was created by:
 
 ## Overview
 
-In our [previous clustering chapter](04-Clustering.qmd) we used graph-based clustering to cluster our spots.
-This approach is based only on transcriptional information and does not take into account the spatial organisation of the tissue.
+In our [previous clustering chapter](04-Clustering.qmd), we used graph-based clustering to group spots based solely on their transcriptional information, without considering spatial organisation.
 
-For this reason, several spatially-aware clustering methods have been developed for spatial transcriptomics data, with the aim of improving **tissue architecture analysis**.
-Understanding tissue architecture is a common goal in these experiments, as it can provide insights into the spatial organisation of cell types and their interactions within the tissue microenvironment.
+**Tissue architecture** refers to the spatial organisation and arrangement of cell types within tissue.
+To capture this, we need methods that incorporate spatial information into the clustering process.
 
-In this chapter, we will explore how to identify and characterise tissue architecture using the **BANKSY** package.
-We will also compare BANKSY-derived clusters with the non-spatial clustering performed earlier, and see whether the spatially variable genes (SVGs) we identified are associated with these spatially informed clusters.
+BANKSY is a spatially aware clustering method that combines gene expression with spatial context.
+Unlike standard graph-based clustering, BANKSY first augments the gene expression matrix by adding spatial features, then applies clustering to this enriched representation.
 
-Like many single-cell and spatial transcriptomics methods, BANKSY ultimately uses graph-based clustering to group similar spots.
-The key difference is that it first augments the gene expression matrix with information about each spot's spatial neighbourhood.
+For each gene, BANKSY calculates two spatial features:
 
-For each gene, BANKSY calculates two additional spatial features:
+- **Mean neighbourhood expression**: The average expression of a gene across neighbouring spots, weighted so nearby spots contribute more strongly than distant ones.
+- **Azimuthal Gabor filter (AGF)**: Inspired by image-processing methods, this captures how gene expression changes across a spot's neighbourhood by measuring directional differences in expression.
+  Intuitively, it identifies directional changes in expression and boundaries (e.g. the "gradient" of expression) highlighting spots that differ from their surrounding tissue environment.
 
-- **Mean neighborhood expression**: The average expression of a gene across neighbouring spots.
-  This average is weighted so that nearby spots contribute more strongly than distant spots, capturing their local spatial context.
-- **Azimuthal Gabor filter (AGF)**: Inspired by image-processing methods, this captures how gene expression changes across a spot's neighbourhood.
-  Intuitively, it identifies local spatial patterns and boundaries by measuring directional differences in expression (a bit like a "gradient" of expression), highlighting spots whose expression differs from their surrounding tissue environment.
-
-These spatial features are combined with the original gene expression values before clustering, allowing BANKSY to identify tissue domains that are defined not only by gene expression but also by spatial expression patterns.
+These spatial features are combined with the original gene expression values before clustering.
+The result is that BANKSY identifies tissue domains defined by both gene expression and spatial expression patterns.
 
 ## Running BANKSY
 
-The BANKSY package has been developed to be compatible with Bioconductor's `SpatialExperiment` class.
-For Seurat users, the `SeuratWrappers` package provides a convenient interface to run BANKSY directly on Seurat objects without needing to convert them to `SpatialExperiment` objects first.
-
-We will therefore load these extra two packages:
+BANKSY is built on Bioconductor's `SpatialExperiment` class, but the `SeuratWrappers` package provides a convenient interface to run BANKSY directly on Seurat objects.
+Let us load these packages:
 
 ```{r}
 #| label: load-banksy
@@ -92,18 +87,18 @@ library(SeuratWrappers)
 library(Banksy)
 ```
 
-We can use the `RunBanksy()` function to run BANKSY on our Seurat object.
-There are two key parameters to consider when running BANSKY:
+The `RunBanksy()` function accepts two key parameters that control clustering behaviour:
 
-- **`k_geom`**: Controls the number of spatial neighbours used to calculate the mean neighborhood expression and azimuthal Gabor filter (AGF).
+- **`lambda`**: Controls the balance between spatial and transcriptional information.
+  - `lambda = 0`: uses only transcriptional information (equivalent to standard graph-based clustering)
+  - `lambda = 1`: uses only spatial information from the neighbourhood
+  - Values in between give a weighted balance, allowing you to capture both spatial domains and cell identities
 
-- **`lambda`**: This controls the balance between spatial and the transcriptional information in the clustering process.
-  - With `lambda = 0` only transcriptional information is used - essentially equivalent to the standard graph-based clustering we did earlier.
-  - With `lambda = 1` only spatial information is used, which would cluster spots based solely on their neighbourhood's expression, ignoring gene expression in other spots.
-  - Values in-between give a weighted balance between the two, allowing you to capture both spatial domains and cell identities in a balanced way.
+- **`k_geom`**: Controls the number of spatial neighbours used to calculate mean neighbourhood expression and the azimuthal Gabor filter.
+  A larger value includes more distant neighbours.
 
-Note that by default, `RunBanksy()` does not calculate AGF features (as it is computationally intensive), but you can turn this on with `use_agf = TRUE`.
-The default is also to use previously identified variable features, but we will instead use all the genes to keep our analysis independent of previous choices.
+By default, `RunBanksy()` does not calculate AGF features (as it is computationally intensive), but you can enable this with `use_agf = TRUE`.
+We will use all genes for the analysis to keep it independent of previous variable feature selection.
 
 ```{r}
 #| label: precompute-banksy
@@ -152,9 +147,8 @@ Assays(visium)
 Layers(visium[["BANKSY"]])
 ```
 
-We now have a new assay - by default named "BANKSY" - which contains the augmented gene expression matrices, including a `scale.data` layer, which is ready to use in downstream steps.
-
-Note that these matrices now have 3 times the number of features as the original assay, as they include the original gene expression, mean neighborhood expression and AGF features for each gene.
+`RunBanksy()` creates a new assay (by default named "BANKSY") containing the augmented gene expression matrix with a `scale.data` layer ready for downstream analysis.
+Note that this matrix has three times the number of features as the original assay because it includes the original gene expression, mean neighbourhood expression, and AGF features for each gene.
 
 ```{r}
 #| label: banksy-nrow
@@ -166,14 +160,14 @@ nrow(visium[["BANKSY"]])
 
 ### Clustering
 
-With the augmented BANKSY gene expression, we can proceed to cluster the data as we would normally do:
+With the augmented BANKSY gene expression, we proceed to cluster the data using the standard workflow:
 
 1. Run PCA on the BANKSY assay to reduce dimensionality.
 2. Find nearest neighbours based on the PCA reduction.
-3. Cluster the data using a graph-based clustering method (e.g. Leiden or Louvain).
+3. Cluster the data using graph-based clustering (Leiden or Louvain).
 
-For consistency with our previous clustering, we will use 50 PCs and resolution of 0.8 for the Leiden algorithm.
-We also set the cluster identities to a new column called "banksy_cluster" to keep them separate from the previous clusters.
+We use 50 principal components and a resolution of 0.8 for the Leiden algorithm, matching our previous analysis.
+We store the new cluster identities in a column called "banksy_cluster" to distinguish them from the earlier non-spatial clusters.
 
 ```{r}
 #| label: banksy-clustering
@@ -192,8 +186,8 @@ visium <- visium |>
 
 ### Visualisation
 
-We can visualise the BANKSY clusters on a UMAP plot and a spatial plot to see how they relate to the spatial organisation of the tissue.
-We also add the UMAP and clustering results from the original analysis on the SCT assay.
+We next visualise the BANKSY clusters on both UMAP and spatial plots to see how they relate to tissue organisation.
+For comparison, we also display the earlier non-spatial clusters from the SCT assay.
 
 ```{r}
 #| label: banksy-visualisation
@@ -254,10 +248,10 @@ sct_spatial <- SpatialDimPlot(
   (sct_umap + sct_spatial)
 ```
 
-The BANKSY UMAP differs from the SCT UMAP, as it is based on the BANKSY reduction, which incorporates spatial information.
-We can see, for example, that there is much less mixing between clusters, both in the UMAP and spatial plot.
-
-An illustrative example is SCT Cluster 5, which is split across several regions of the tissue:
+The BANKSY UMAP differs from the SCT UMAP because the BANKSY reduction incorporates spatial information.
+Notice how the clusters show much less mixing in both the UMAP and spatial plots, indicating tighter spatial coherence.
+An illustrative example is SCT Cluster 5, which is split across several separate regions of the tissue.
+BANKSY fragments this scattered cluster into more spatially unified domains.
 
 ```{r}
 #| label: highlight-sct-cluster
@@ -275,62 +269,45 @@ sct_c5 <- SpatialPlot(
   theme(legend.position = "none")
 ```
 
-This clearly shows how BANKSY emphasises tissue architecture, even with a relatively small lambda value of 0.2 we used.
+This visualisation shows how BANKSY emphasises tissue architecture.
+Even with a relatively modest lambda value of 0.2, the spatial structure is clearly visible.
 
-Note that this doesn't mean the clusters identified by BANKSY are "better" than the ones identified by non-spatial clustering.
-Non-spatial clustering may be capturing **cell identities**, and the same types of cells may be present in different regions of the tissue.
-BANKSY, on the other hand, is capturing **tissue domains**, which are defined by their spatial context as well as their transcriptional profiles and may even contain multiple cell types.
+It is important to understand that BANKSY clusters are not "better" than non-spatial clusters - they answer different biological questions.
+Non-spatial clustering identifies **cell identities**: groups of cells with similar transcriptional profiles, regardless of location.
+The same cell type may appear in different tissue regions.
+BANKSY identifies **tissue domains**: spatial regions defined by both transcriptional profiles and spatial context.
+A tissue domain may contain multiple cell types but represents a coherent spatial unit.
 
-:::{.callout-important collapse="true"}
+::: {.callout-important collapse="true"}
 #### Important note on the choice of lambda value in Visium V1 data
 
 We copy a warning directly from the [BANKSY documentation](https://prabhakarlab.github.io/Banksy/), as it is relevant to our dataset:
 
-> **An important note about choosing the `lambda` parameter for the
-> older [Visium v1 / v2 55um
-> datasets](https://doi.org/10.1038/s41593-020-00787-0) or the original
-> [ST 100um technology](https://doi.org/10.1038/s41596-018-0045-2):**
+> **An important note about choosing the `lambda` parameter for the older [Visium v1 / v2 55um > datasets](https://doi.org/10.1038/s41593-020-00787-0) or the original [ST 100um technology](https://doi.org/10.1038/s41596-018-0045-2):**
 >
-> For most modern high resolution technologies like Xenium, Visium HD,
-> StereoSeq, MERFISH, STARmap PLUS, SeqFISH+, SlideSeq v2, and CosMx
-> (and others), we recommend the usual defults for `lambda`: For cell
-> typing, use `lambda = 0.2` (as shown below, or in [this
-> vignette](https://prabhakarlab.github.io/Banksy/articles/parameter-selection.html))
-> and for [domain
-> segmentation](https://prabhakarlab.github.io/Banksy/articles/domain-segment.html),
-> use `lambda = 0.8`. These technologies are either imaging based,
-> having true single-cell resolution (e.g., MERFISH), or are sequencing
-> based, having barcoded spots on the scale of single-cells (e.g.,
-> [Visium
-> HD](https://www.10xgenomics.com/products/visium-hd-spatial-gene-expression)).
-> We find that the usual defaults work well at this measurement
-> resolution.
+> For most modern high resolution technologies like Xenium, Visium HD, StereoSeq, MERFISH, STARmap PLUS, SeqFISH+, SlideSeq v2, and CosMx (and others), we recommend the usual defults for `lambda`: For cell typing, use `lambda = 0.2` (as shown below, or in [this > vignette](https://prabhakarlab.github.io/Banksy/articles/parameter-selection.html)) and for [domain > segmentation](https://prabhakarlab.github.io/Banksy/articles/domain-segment.html), use `lambda = 0.8`.
+> These technologies are either imaging based, having true single-cell resolution (e.g., MERFISH), or are sequencing based, having barcoded spots on the scale of single-cells (e.g., [Visium > HD](https://www.10xgenomics.com/products/visium-hd-spatial-gene-expression)).
+> We find that the usual defaults work well at this measurement resolution.
 >
-> However, for the older **Visium v1/v2** or **ST** technologies, with
-> their much lower resolution spots (55um and 100um diameter,
-> respectively), we find that `lambda = 0.2` seems to work best for
-> domain segmentation. This could be because each spot already measures
-> the average transcriptome of several cells in a neighbourhood. It
-> seems that `lambda = 0.2` shares enough information between these
-> neighbourhoods to lead to good domain segmentation performance. For
-> example, in the [human DLPFC
-> vignette](https://prabhakarlab.github.io/Banksy/articles/multi-sample.html),
-> we use `lambda = 0.2` on a Visium v1/v2 dataset. Also note that in
-> these lower resolution technologies, each spot can have multiple cells
-> of different types, and as such *cell-typing* is not defined for them.
+> However, for the older **Visium v1/v2** or **ST** technologies, with their much lower resolution spots (55um and 100um diameter, respectively), we find that `lambda = 0.2` seems to work best for domain segmentation.
+> This could be because each spot already measures the average transcriptome of several cells in a neighbourhood.
+> It seems that `lambda = 0.2` shares enough information between these neighbourhoods to lead to good domain segmentation performance.
+> For example, in the [human DLPFC > vignette](https://prabhakarlab.github.io/Banksy/articles/multi-sample.html), we use `lambda = 0.2` on a Visium v1/v2 dataset.
+> Also note that in these lower resolution technologies, each spot can have multiple cells of different types, and as such *cell-typing* is not defined for them.
 :::
 
 ## Comparison with SVGs
 
-We can use the `FindAllMarkers()` function to identify differentially expressed genes between the BANKSY clusters.
-Because the BANSKY clusters are spatially informed, the marker genes will indirectly reflect the tissue architecture captured by BANKSY.
+We can identify differentially expressed genes between BANKSY clusters using `FindAllMarkers()`.
+Because the BANKSY clusters are spatially informed, their marker genes indirectly reflect tissue architecture.
 
-However, we need to be careful about which assay we use for this analysis:
+However, which assay we use matters:
 
-- If we are interested in identifying genes that are differentially expressed between the BANKSY clusters, we should use the "SCT" assay, which contains original expression data.
-- If we use the "BANKSY" assay, we will be identifying genes that are differentially expressed in the augmented space, which includes spatial features and may not directly reflect gene expression differences.
+- Use the "SCT" assay to identify genes differentially expressed between BANKSY clusters in the original gene expression space.
+- If we use the "BANKSY" assay, we would identify genes that are differentially expressed in the augmented space including spatial features.
+  This may not directly reflect gene expression differences.
 
-In this case, we will use the "SCT" assay to identify marker genes for the BANKSY clusters.
+We therefore use the "SCT" assay:
 
 ```{r}
 #| label: banksy-markers
@@ -354,7 +331,7 @@ banksy_marker_genes <- banksy_markers |>
 
 This returns `r length(banksy_marker_genes)` marker genes for the BANKSY clusters.
 
-We can look at the overlap between these BANKSY marker genes and the 2000 spatially variable genes we identified in the previous chapter.
+Now we compare these BANKSY marker genes with the 2000 spatially variable genes (SVGs) identified in the previous chapter:
 
 ```{r}
 #| label: marker-overlap
@@ -370,30 +347,32 @@ gplots::venn(list(
 ))
 ```
 
-We can see that all about 70% of the previous SVGs are also identified as BANKSY marker genes, but there are also many BANKSY marker genes that are not identified as SVGs.
+Approximately 70% of the previous SVGs are also identified as BANKSY marker genes, but many BANKSY marker genes are not among the SVGs.
 
 Again, we emphasise that this doesn't reflect one method being better than the other.
-The SVGs are identified based on their spatial variability across the tissue, while the BANKSY markers are identified based on their differential expression between spatially informed clusters.
-The fact that there is some overlap suggests that the BANKSY clusters are capturing some of the spatial variability in the data, but the additional BANKSY markers that are not SVGs may be capturing other aspects of the tissue architecture that are not solely defined by spatial variability, such as specific cell type identities.
+SVGs are selected based on spatial variability across the tissue - high expression in some locations, low in others.
+BANKSY markers are selected based on differential expression between spatially informed clusters.
 
-At the same time, non-spatially informed clustering and marker gene identification may identify clusters of cell types that are not spatially organised or sparsely distributed (for example invading immune cells in a tumour), which BANKSY might miss due to its focus on spatial coherence.
+The overlap suggests that BANKSY clusters capture genuine spatial patterns in gene expression.
+The additional BANKSY markers not identified as SVGs may reflect cell identity markers within spatially defined domains, or fine-scale spatial patterns not captured by SVG methods.
+
+Conversely, non-spatial clustering may identify cell type clusters that are not spatially organised or sparsely distributed across regions (for example, scattered immune cells in tumour tissue), which BANKSY might miss because its focus on spatial coherence would merge them with surrounding tissue.
 
 ## Exercises
 
-::: {.calloot-exercise}
+::: {.callout-exercise}
 #### Exploring lambda
 
-In the code above, we ran BANKSY with a lambda value of 0.2, which gives more weight to transcriptional information than spatial information.
-Try running BANKSY with a higher lambda value of 0.8, which gives more weight to spatial information, and compare the results to the original analysis.
+In the code above, we ran BANKSY with a lambda value of 0.2, which weights transcriptional information more heavily than spatial information.
+Try running BANKSY with a higher lambda value of 0.8, which weights spatial information more heavily, and compare the results to the original analysis.
 
-Important note to avoid overwriting the previous results:
+To avoid overwriting the previous results:
 
-- In `RunBanksy()` use the option `assay_name` to give the new BANKSY assay a different name (e.g. "BANKSY_lambda_0.8").
-- In `FindClusters()` use the option `cluster.name` to a different name (e.g. "banksy_cluster_lambda_0.8").
+- In `RunBanksy()` use the `assay_name` option to name the new BANKSY assay differently (e.g. "BANKSY_lambda_0.8").
+- In `FindClusters()` use the `cluster.name` option with a different name (e.g. "banksy_cluster_lambda_0.8").
 
 ::::: {.callout-hint}
-As a reminder, here is the full workflow we ran earlier as a series of piped operations.
-You can adapt this code to run with the new lambda value and different assay and cluster names.
+As a reminder, here is the complete workflow we ran earlier:
 
 ```{r}
 #| label: banksy-hint
@@ -427,12 +406,12 @@ visium <- visium |>
   )
 ```
 
+You can adapt this workflow by changing the lambda value and assay and cluster names.
 :::::
 
 ::::: {.callout-answer}
-
-We adapt the workflow demonstrated in the materials with the new lambda value and different assay and cluster names.
-You might choose to be use more compact names than we do, but we're being explicit here for clarity.
+We adapt the workflow with the new lambda value and updated assay and cluster names.
+Note that the names are intentionally verbose for clarity, but you may choose to be more concise in your own analysis.
 
 ```{r}
 #| label: banksy-lambda-0.8
@@ -470,7 +449,7 @@ Assays(visium)
 Reductions(visium)
 ```
 
-We can plot these along with the previous run using lambda = 0.2:
+We can now plot these results alongside the lambda = 0.2 analysis:
 
 ```{r}
 #| label: compare-lambda
@@ -501,29 +480,28 @@ banksky_spatial_08 <- SpatialDimPlot(
   (banksy_umap + banksky_spatial)
 ```
 
-Two things become quite apparent from these plots:
+Two differences are apparent when comparing the analyses:
 
-- The number of clusters identified with lambda = 0.8 is much lower than with lambda = 0.2, as the clustering is now more strongly driven by spatial information and less by gene expression patterns.
-- If you imagine rotating the UMAP by 180 degrees, you can see that it almost exactly recreates the original tissue architecture. Again, this emphasises how with a higher lambda value, the clustering is more strongly driven by spatial information, leading to clusters that are more spatially coherent and closely reflect the underlying tissue architecture.
+- The lambda = 0.8 analysis identifies fewer clusters than lambda = 0.2, because the clustering now prioritises spatial coherence over transcriptional similarity.
+  Neighbouring tissue regions are more likely to be grouped together.
+- If you rotate the lambda = 0.8 UMAP 180 degrees, it nearly recreates the original spatial tissue architecture.
+  This demonstrates that the higher lambda value drives clustering primarily by spatial information, producing clusters that closely reflect underlying tissue organisation.
 
-Which lambda value is more appropriate depends on the biological question you are trying to answer.
-If you are interested in identifying tissue domains that are defined by their spatial context, then a higher lambda value may be more appropriate.
-If you are interested in identifying cell types that may be present in different regions of the tissue, then a lower lambda value can be used.
-
+**The choice of lambda depends on your biological question.** For identifying tissue domains defined by spatial context, use a higher lambda value.
+For identifying cell types that may be scattered across different regions, use a lower lambda value.
 :::::
 :::
 
-:::{.callout-exercise}
+::: {.callout-exercise}
 #### Exploring neighbourhood size
 
-The second parameter you can explore is `k_geom`, which controls the number of nearest neighbors used to construct the spatial graph.
-A higher value of `k_geom` will result in a more connected graph, while a lower value will result in a more fragmented graph.
+The parameter `k_geom` controls the number of nearest neighbours used to calculate the spatially-augmented features by BANKSY.
+A larger value will likely result in a more connected graph and amplifies spatial information.
 
-- Run BANKSY with a higher `k_geom` value of 50, keeping lambda at 0.2 as our original analysis.
-- Compare the results with our original analysis (`k_geom = 15, lambda = 0.2`).
+Try running BANKSY with a higher `k_geom` value of 50, keeping lambda at 0.2 as in the original analysis.
+Compare the results to the original analysis (lambda = 0.2, k_geom = 15).
 
-:::{.callout-answer}
-
+::::: {.callout-answer}
 ```{r}
 #| label: banksy-k-50
 
@@ -560,7 +538,7 @@ Assays(visium)
 Reductions(visium)
 ```
 
-We can create the UMAP and spatial plots for this new analysis and compare it to the previous two:
+We create UMAP and spatial plots for this analysis and compare them to the original:
 
 ```{r}
 #| label: compare-k
@@ -591,26 +569,44 @@ banksky_spatial_k50 <- SpatialDimPlot(
   (banksy_umap + banksky_spatial)
 ```
 
-We can see that the effect of increasing `k_geom` is two-fold:
+Increasing `k_geom` to 50 seems to have two effects:
 
-- The number of clusters identified is lower, as the larger neighbourhood size leads to a more connected graph and therefore larger clusters.
-- The UMAP also more closely reflects the original tissue architecture, as the larger neighbourhood size emphasises spatial information into the clustering process.
+- Fewer clusters are identified because the larger neighbourhood size creates a more connected graph, which merges smaller spatial regions into larger domains.
+- The UMAP more closely reflects the original tissue architecture, because the larger spatial neighbourhood emphasises spatial coherence into the clustering.
 
-As before, there is no right or wrong choice of `k_geom`, and it depends on how much emphasis you want to place on spatial information and how big you think particular regions of the tissue might be.
+The choice of `k_geom` reflects your prior assumption about tissue domain size.
+Lower values are appropriate for data with finely structured tissue.
+Higher values smooth over fine structure and identify larger domains.
 
-One thing to note again is that for Visium v1/v2 data, spots will capture multiple cells, and so implicitly incorporate some spatial information, as the expression profile of each spot can be seen as an average of the cells that fall within it.
-
-For that reason, in v1/v2 data, it may be good to use lower values for `k_geom` and `lambda` than for other data types such as Visium HD and Xenium.
-
+For Visium v1/v2 data (like our dataset), each spot already measures the average expression from multiple cells occupying that location.
+This implicitly incorporates spatial information.
+You may therefore want to use lower `k_geom` and `lambda` values than for high-resolution technologies such as Visium HD and Xenium.
+:::::
 :::
 
 ## Summary
-::: {.callout-tip}
-#### Key Points
 
-- Tissue architecture refers to the spatial organisation and arrangement of cells within a tissue.
-- The `BANKSY` package can be used to identify and characterise tissue architecture by incorporating both spatial and transcriptional information.
-- BANKSY clusters are often more spatially coherent than non-spatially informed clusters.
-- BANKSY can identify marker genes that overlap with spatially variable genes, but also identifies additional markers.
-- Non-spatially informed clustering can still be useful for identifying cell types that are not spatially organised.
+::: {.callout-tip}
+### Key Points
+
+- Use `RunBanksy()` to augment expression data with spatial features: mean neighbourhood expression (average expression in neighbouring spots) and azimuthal Gabor filter (directional changes in expression).
+  - `RunBanksy()` accepts parameters: `lambda` (balance between spatial and transcriptional information), `k_geom` (number of spatial neighbours), and `use_agf` (whether to calculate AGF features).
+  - The resulting augmented matrix has three times as many features as the original because it includes original expression plus two spatial features per gene.
+
+- BANKSY clusters differ from non-spatial clusters because they prioritise spatial coherence in addition to transcriptional similarity.
+  - Non-spatial clustering identifies **cell identities** — cells with similar expression profiles, regardless of location.
+  - BANKSY identifies **tissue domains** — spatially coherent regions defined by both expression and spatial context, which may contain multiple cell types.
+  - Visualising both methods side-by-side reveals how BANKSY fragments scattered clusters into spatially unified regions.
+
+- BANKSY marker genes overlap substantially with spatially variable genes (SVGs) but include additional markers reflecting cell identity within spatial domains.
+  - ~70% of SVGs are recovered as BANKSY marker genes, indicating BANKSY captures spatial variability.
+  - BANKSY markers not identified as SVGs may reflect uniform expression within a domain or cell type identity within a spatial region.
+  - The complementary nature of these gene sets means non-spatial clustering and spatial analysis together provide different biological insights.
+
+- Adjust lambda and k_geom to control the weighting between spatial coherence and transcriptional similarity.
+  - Higher `lambda` (e.g. 0.8) emphasises spatial coherence, identifying larger tissue domains.
+  - Lower `lambda` (e.g. 0.2) emphasises transcriptional similarity, allowing cell types to be identified across multiple spatial regions.
+  - Higher `k_geom` increases neighbourhood size and spatial smoothing, resulting in fewer and larger clusters.
+  - Lower `k_geom` creates more fragmented neighbourhoods, identifying finer tissue structure.
+  - For Visium v1/v2 data, lower values work well because each spot already averages multiple cells' expression.
 :::
