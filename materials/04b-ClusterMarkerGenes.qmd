@@ -1,10 +1,4 @@
----
-format:
-  html:
-    code-summary: "Show the code"
----
-
-# Clustering of Spatial Transcriptomics Data
+# Cluster Marker Genes
 
 ```{r}
 #| label: setup
@@ -18,9 +12,11 @@ knitr::opts_knit$set(root.dir = here::here("course_files"))
 ```
 
 ::: {.callout-tip}
-#### Learning Objectives
+### Learning Objectives
 
-- TODO
+- Explain why marker gene analysis after clustering is exploratory and should be validated with external data.
+- Identify marker genes for each cluster and interpret the main columns in the output table.
+- Filter marker genes to find significant, high-effect markers and visualiase their spatial expression patterns.
 :::
 
 ## Setup
@@ -202,11 +198,24 @@ SpatialFeaturePlot(
 ```
 
 We could follow-up by comparing these markers to literature or reference datasets, to start assigning biological meaning identity to these clusters.
+You could also perform **gene ontology analysis and pathway analysis** on the marker genes for each cluster, to identify enriched biological processes or pathways.
+In this case, you may want to use more relaxed filtering criteria to get a larger list of genes for the analysis, for example: `p_val_adj < 0.05 & avg_log2FC > log2(3)` to get significant genes with at least a 3x fold change.
 
 ## Summary
 
 ::: {.callout-tip}
-#### Key Points
+### Key Points
 
-- TODO
+- Marker gene analysis helps label clusters, but it is exploratory because the clusters were already defined from expression data.
+  - Use the results to generate hypotheses about cluster identity.
+  - Validate suggested identities with external reference data or experiments.
+
+- `FindAllMarkers()` compares each cluster against all others and returns a data frame with the results.
+  - The Wilcoxon rank-sum test is a common statistical test choice for spatial transcriptomics data.
+  - `only.pos = TRUE` keeps only genes upregulated in the target cluster.
+  - `min.pct` and `logfc.threshold` help exclude genes unlikely to show differences for computational efficiency.
+
+- Marker genes for each cluster can be identified by filtering on p-values, log-fold changes, and/or the percentage of spots expressing the gene.
+  - Filtering criteria should be chosen based on the specific goal, for example: stricter thresholds for identifying highly specific markers; more permissive thresholds for performing a follow-up gene ontology analysis.
+  - Marker genes can be visualised using spatial plots of gene expression.
 :::
