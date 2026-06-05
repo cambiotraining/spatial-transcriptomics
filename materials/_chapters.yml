@@ -8,8 +8,8 @@ book:
         - materials/02b-Normalisation.qmd
         - materials/03-DimensionalityReduction.qmd
         - materials/04-Clustering.qmd
+        - materials/04b-ClusterMarkerGenes.qmd
         - materials/05-Deconvolution.qmd
-        - materials/06-Visualisation.qmd
         - materials/07-SpatiallyVariableFeatures.qmd
         - materials/08-TissueArchitecture.qmd
         - materials/09-CellCellInteraction.qmd
@@ -18,3 +18,6 @@ book:
         - materials/10-VisiumExample.qmd
         - materials/11-XeniumExample.qmd
         - materials/12-MerfishExample.qmd
+    - part: "Extended Materials"
+      chapters:
+        - materials/06-Visualisation.qmd
