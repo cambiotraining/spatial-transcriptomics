@@ -45,6 +45,8 @@ Download and unzip the folder to your Desktop to follow along with the materials
     "Seurat",
     "hdf5r",
     "leidenbase",
+    "Rfast2",
+    "ape",
     "bioc::clusterProfiler",
     "bioc::org.Hs.eg.db",
     "bioc::glmGamPoi",
