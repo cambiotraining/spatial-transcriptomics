@@ -1,6 +1,4 @@
----
-title: Human Melanoma Xenium Analysis
----
+# Xenium: Human Melanoma
 
 ::: {.callout-tip}
 #### Learning Objectives

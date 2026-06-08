@@ -1,6 +1,10 @@
----
-title: Cell-Cell Interaction Analysis
----
+# Cell-Cell Interactions
+
+:::{.callout-caution}
+
+This section is under revision
+
+:::
 
 ::: {.callout-tip}
 #### Learning Objectives
@@ -174,16 +178,16 @@ groupSize <- as.numeric(table(cellchat@idents))
 netVisual_circle(
   cellchat@net$count,
   vertex.weight = groupSize,
-  weight.scale = T,
-  label.edge = F,
+  weight.scale = TRUE,
+  label.edge = FALSE,
   title.name = "Number of interactions",
   top = 0.3
 )
 netVisual_circle(
   cellchat@net$weight,
   vertex.weight = groupSize,
-  weight.scale = T,
-  label.edge = F,
+  weight.scale = TRUE,
+  label.edge = FALSE,
   title.name = "Interaction weights/strength",
   top = 0.3
 )

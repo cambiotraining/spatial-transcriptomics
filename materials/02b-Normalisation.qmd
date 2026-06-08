@@ -221,15 +221,11 @@ To keep this chapter practical, we provide a preprocessed object and include the
 `ScaleData()` is used after `NormalizeData()`.
 We already ran log-normalisation above; here we show both steps together for completeness.
 
-::: {.callout-note collapse="true"}
-#### Click to expand code
-
-This takes a long time to run, so you can load the preprocessed object shown below instead.
-
 ```{r}
 #| label: log-normalisation-scaling
 #| cache: true
-#| eval: false
+#| code-fold: true
+#| code-summary: "Show code for normalisation and scaling - takes a long time to run!"
 
 # Perform log-normalisation and scaling
 # This takes a long time to run!
@@ -238,22 +234,6 @@ visium <- visium |>
   NormalizeData(assay = "Spatial") |>
   ScaleData(assay = "Spatial", vars.to.regress = "percentMt_Spatial")
 ```
-
-```{r}
-#| label: normalise-or-read-preprocessed
-#| cache: true
-#| include: false
-
-# Read the preprocessed Seurat object unless it doesn't exist
-if (!file.exists("precomputed/mouse_brain_normalised.rds")) {
-  visium <- visium |>
-    NormalizeData(assay = "Spatial") |>
-    ScaleData(assay = "Spatial", vars.to.regress = "percentMt_Spatial")
-} else {
-  visium <- readRDS("precomputed/mouse_brain_normalised.rds")
-}
-```
-:::
 
 ```{r}
 #| label: read-normalised-preprocessed
@@ -291,6 +271,7 @@ As this is a fairly involved process, we provide the step-by-step instructions i
 #| label: scran-normalisation
 #| echo: false
 #| results: "hide"
+#| cache: true
 
 # NOTE: we keep this code here so we create the precomputed object with this normalisation included
 
@@ -317,15 +298,9 @@ visium[["Scran"]] <- CreateAssayObject(data = scranNormCts)
 # Store size factors in metadata
 visium$scranSizeFactors <- sizeFactors
 
-# Save the preprocessed Seurat object if it doesn't exist already
-if (!file.exists("precomputed/mouse_brain_normalised.rds")) {
-  # Add a `scale.data` layer to the Scran assay
-  visium <- visium |>
-    ScaleData(assay = "Scran", vars.to.regress = "percentMt_Spatial")
-  saveRDS(visium, file = "precomputed/mouse_brain_normalised.rds")
-} else {
-  visium <- readRDS("precomputed/mouse_brain_normalised.rds")
-}
+# Add a `scale.data` layer to the Scran assay
+visium <- visium |>
+  ScaleData(assay = "Scran", vars.to.regress = "percentMt_Spatial")
 ```
 
 ## SpaNorm
@@ -459,6 +434,14 @@ At this stage the object contains several assays and layers, which increases mem
 If you plan to continue with one representation (for example `SCT`), you can remove unused assays or layers before saving.
 
 ```{r}
+#| label: save-full-participant
+#| include: false
+
+# Save full normalised object for participant use
+saveRDS(visium, file = "precomputed/mouse_brain_normalised.rds")
+```
+
+```{r}
 #| label: cleanup
 
 # make SCT default assay
@@ -481,7 +464,7 @@ saveRDS(visium, file = "results/mouse_brain_normalised_cleaned.rds")
 #| label: save-cleaned-participant
 #| include: false
 
-# save the Seurat object
+# Clean object with only the SCT assay and raw counts in Spatial
 saveRDS(visium, file = "precomputed/mouse_brain_normalised_cleaned.rds")
 ```
 

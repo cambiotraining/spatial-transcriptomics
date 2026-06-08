@@ -1,6 +1,10 @@
----
-title: Deconvolution of Spatial Transcriptomics Data
----
+# Deconvolution
+
+:::{.callout-caution}
+
+This section is under revision
+
+:::
 
 ::: {.callout-tip}
 #### Learning Objectives
@@ -11,24 +15,63 @@ title: Deconvolution of Spatial Transcriptomics Data
 - Visualize and interpret deconvolution results
 :::
 
-## Deconvolution of Spatial Transcriptomics Data
+## Setup
+
+We continue working with the sagittal mouse brain dataset from previous chapters.
+
+::: {.callout-note collapse="true"}
+#### Click to expand
+
+Start by loading the required libraries and the Seurat object.
+
+```r
+#| label: load-visium-data
+
+# Load libraries
+library(Seurat) # single-cell and spatial analysis toolkit
+library(sparseMatrixStats)
+library(paletteer) # colour palettes
+library(ggplot2) # plotting
+library(dplyr) # data manipulation
+library(patchwork) # combining plots
+
+# Load the Seurat object from the previous chapter
+visium <- readRDS("precomputed/mouse_brain_banksy.rds")
+```
+
+As a reminder, this object was created by:
+
+- Importing the raw data using `Load10X_Spatial()`, followed by QC and filtering to remove low-quality spots.
+- Data normalisation using `SCTransform()`, which models technical variation and applies variance stabilisation.
+  Stored in the "SCT" assay.
+- Applying dimensionality reduction using PCA, UMAP and t-SNE.
+- Clustering the data using graph-based clustering.
+  The clusters we use in this chapter were generated using the Leiden algorithm at a resolution of 0.8 and were set the the default cell identities (`Idents(visium)`).
+- Identifying spatially variable features using Moran's I and markvariogram methods.
+- Running the BANKSY algorithm to identify spatial domains in the data, which were stored in the `banksy_clusters` column of the metadata.
+:::
+
+## Overview
 
 Deconvolution is a computational technique used to estimate the cellular composition of complex tissues from bulk gene expression data.
 In the context of spatial transcriptomics, deconvolution can help identify the proportions of different cell types within spatially resolved samples.
-We will be using the `RCTD` package, which provides functions for deconvolution of spatial transcriptomics data.
+
+- TODO: expand this discussion a bit more
+- Discuss different tools and RCTD in particular
+
+## Running RCTD
+
+The RCTD (Robust Cell Type Decomposition) function is implemented in the Bioconductor package [`spacexr`](https://www.bioconductor.org/packages/release/bioc/html/spacexr.html).
+We load that package, along with the `pheatmap`, which we will use for heatmap visualisations.
 
 ```r
 # Load necessary libraries
 library(spacexr)
 library(pheatmap)
-library(SingleCellExperiment)
-library(SummarizedExperiment)
-library(SpatialExperiment)
 ```
 
-### Load Data
+The first step in running RCTD is to prepare the single-cell reference data and the spatial transcriptomics data in the appropriate formats.
 
-First, we need to load the the single cell reference data and convert it to an appropriate reference format for RCTD.
 For this example, we will use a preprocessed single-cell RNA-seq dataset as the reference.
 We will have a quick look at the data to understand its structure.
 As this is a precomputed dataset, we will load it from an RDS file and then use the `UpdateSeuratObject` function to ensure compatibility with the latest Seurat version.

@@ -4,7 +4,12 @@
 #| label: setup
 #| include: false
 
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  cache.lazy = FALSE
+)
 
 # set the working directory to the course_files folder
 # make sure to run course_files/download_course_files.sh
@@ -102,36 +107,8 @@ By default, `RunBanksy()` does not calculate AGF features (as it is computationa
 We use all genes for the analysis to keep it independent of previous variable feature selection.
 
 ```{r}
-#| label: precompute-banksy
-#| cache: true
-#| echo: false
-
-# To save time, create/read precomputed object
-if (!file.exists("precomputed/mouse_brain_banksy.rds")) {
-  visium <- RunBanksy(
-    visium,
-    assay = "SCT",
-    lambda = 0.2,
-    k_geom = 18,
-    use_agf = TRUE,
-    features = "all"
-  )
-  saveRDS(visium, "precomputed/mouse_brain_banksy.rds")
-} else {
-  visium <- readRDS("precomputed/mouse_brain_banksy.rds")
-}
-
-# Confirm that the BANKSY assay has been added to the Seurat object
-Assays(visium)
-
-# Check the layers in the BANKSY assay
-Layers(visium[["BANKSY"]])
-```
-
-```{r}
 #| label: run-banksy
 #| cache: true
-#| eval: false
 
 # Run BANKSY on the Seurat object
 visium <- RunBanksy(
@@ -142,6 +119,10 @@ visium <- RunBanksy(
   use_agf = TRUE,
   features = "all"
 )
+```
+
+```{r}
+#| label: check-banksy-assay
 
 # Confirm that the BANKSY assay has been added to the Seurat object
 Assays(visium)
@@ -174,6 +155,7 @@ We store the new cluster identities in a column called "banksy_cluster" to disti
 
 ```{r}
 #| label: banksy-clustering
+#| cache: true
 
 # Cluster based on BANKSY assay
 visium <- visium |>
@@ -266,7 +248,7 @@ sct_c5_spatial <- SpatialPlot(
 # Plot side by side
 (banksy_umap + banksky_spatial) /
   (sct_umap + sct_spatial) /
-  (sct_c5_umap + sct_c5)
+  (sct_c5_umap + sct_c5_spatial)
 ```
 
 The BANKSY UMAP differs from the SCT UMAP because BANKSY incorporates spatial information.
@@ -347,6 +329,7 @@ We therefore use the "SCT" assay:
 
 ```{r}
 #| label: banksy-markers
+#| cache: true
 
 # Find markers for BANKSY clusters
 banksy_markers <- FindAllMarkers(
@@ -392,6 +375,24 @@ The overlap suggests BANKSY clusters capture genuine spatial patterns.
 BANKSY markers not identified as SVGs may reflect cell identity markers within spatially defined domains or fine-scale spatial patterns not captured by SVG methods.
 
 Conversely, non-spatial clustering may identify cell type clusters that are not spatially organised or sparsely distributed across regions (for example, scattered immune cells in tumour tissue), which BANKSY might miss because spatial coherence is prioritised, merging them with surrounding tissue.
+
+## Export the Seurat Object
+
+As usual, it's a good idea to save your intermediate file for future use:
+
+```{r}
+#| label: save-banksy-object
+#| eval: false
+
+saveRDS(visium, "results/mouse_brain_banksy.rds")
+```
+
+```{r}
+#| label: save-participant-object
+#| include: false
+
+saveRDS(visium, "precomputed/mouse_brain_banksy.rds")
+```
 
 ## Exercises
 
@@ -450,6 +451,7 @@ The names are intentionally verbose for clarity, though you may prefer shorter n
 
 ```{r}
 #| label: banksy-lambda-0.8
+#| cache: true
 
 # Run BANKSY
 visium <- visium |>
@@ -521,8 +523,7 @@ We can see some differences when comparing the analyses:
 - The `lambda = 0.8` UMAP nearly recreates the original spatial tissue architecture when rotated 180 degrees.
   This demonstrates that higher lambda values drive clustering primarily by spatial information, producing clusters that closely reflect underlying tissue organisation.
 
-**Choose lambda based on your biological question.**
-For identifying tissue domains defined by spatial context, use a higher lambda value.
+**Choose lambda based on your biological question.** For identifying tissue domains defined by spatial context, use a higher lambda value.
 For identifying cell types that may be scattered across different regions, use a lower lambda value.
 :::::
 :::
@@ -540,6 +541,7 @@ Compare the results to the original analysis (`lambda = 0.2, k_geom = 18`).
 ::::: {.callout-answer}
 ```{r}
 #| label: banksy-k-36
+#| cache: true
 
 # Run BANKSY
 visium <- visium |>
@@ -615,8 +617,7 @@ However, note the two parameters are different:
 - With `k_geom` we're controlling the size of the neighbourhood over which BANKSY calculates its spatial expression metrics.
 - With `lambda` we control how much weight we put on those spatial expression features, compared to the original expression values.
 
-**Choose `k_geom` based on your assumptions about tissue domain size.**
-Lower values are appropriate for data with finely structured tissue.
+**Choose `k_geom` based on your assumptions about tissue domain size.** Lower values are appropriate for data with finely structured tissue.
 Higher values smooth over fine structure and identify larger domains.
 
 For Visium v1/v2 data (like our dataset), each spot already measures averaged expression from multiple cells.

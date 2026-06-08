@@ -1,6 +1,4 @@
----
-title: Human Heart MerFISH Analysis
----
+# MerFISH: Human Heart
 
 ::: {.callout-tip}
 #### Learning Objectives
