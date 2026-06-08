@@ -96,6 +96,7 @@ The `RunBanksy()` function accepts two key parameters that control clustering be
 
 - **`k_geom`**: Controls the number of spatial neighbours used to calculate mean neighbourhood expression and the azimuthal Gabor filter.
   A larger value includes more distant neighbours.
+  Note that the same value of `k_geom` has very different meanings in terms of the physical area it covers, depending on the technology used (see information box below for a discussion on this topic).
 
 By default, `RunBanksy()` does not calculate AGF features (as it is computationally intensive), but you can enable this with `use_agf = TRUE`.
 We will use all genes for the analysis to keep it independent of previous variable feature selection.
@@ -110,7 +111,7 @@ if (!file.exists("precomputed/mouse_brain_banksy.rds")) {
     visium,
     assay = "SCT",
     lambda = 0.2,
-    k_geom = 15,
+    k_geom = 18,
     use_agf = TRUE,
     features = "all"
   )
@@ -135,7 +136,7 @@ visium <- RunBanksy(
   visium,
   assay = "SCT",
   lambda = 0.2,
-  k_geom = 15,
+  k_geom = 18,
   use_agf = TRUE,
   features = "all"
 )
@@ -209,7 +210,7 @@ banksy_umap <- DimPlot(
   group.by = "banksy_cluster",
   label = TRUE
 ) +
-  ggtitle("BANKSY Clusters: lambda = 0.2, k_geom = 15") +
+  ggtitle("BANKSY Clusters: lambda = 0.2, k_geom = 18") +
   coord_equal() +
   theme_void()
 
@@ -279,7 +280,7 @@ BANKSY identifies **tissue domains**: spatial regions defined by both transcript
 A tissue domain may contain multiple cell types but represents a coherent spatial unit.
 
 ::: {.callout-important collapse="true"}
-#### Important note on the choice of lambda value in Visium V1 data
+#### Important note on the choice of lambda in Visium V1/V2 data
 
 We copy a warning directly from the [BANKSY documentation](https://prabhakarlab.github.io/Banksy/), as it is relevant to our dataset:
 
@@ -294,6 +295,37 @@ We copy a warning directly from the [BANKSY documentation](https://prabhakarlab.
 > It seems that `lambda = 0.2` shares enough information between these neighbourhoods to lead to good domain segmentation performance.
 > For example, in the [human DLPFC > vignette](https://prabhakarlab.github.io/Banksy/articles/multi-sample.html), we use `lambda = 0.2` on a Visium v1/v2 dataset.
 > Also note that in these lower resolution technologies, each spot can have multiple cells of different types, and as such *cell-typing* is not defined for them.
+:::
+
+::: {.callout-important collapse="true"}
+#### Choosing `k_geom` adequately
+
+The `k_geom` parameter controls the number of spatial neighbours used by BANKSY when estimating the local neighbourhood transcriptome metrics.
+Although it is specified as a number of neighbours, it is often more helpful to think of `k_geom` in terms of the **physical spatial radius represented by those neighbours**.
+
+The same value of `k_geom` can correspond to very different spatial scales across technologies.
+For example, in 10x Visium V1/V2, spots are arranged on a hexagonal lattice with a centre-to-centre spacing of approximately 100 µm.
+In this case:
+
+- `k_geom = 6` corresponds to the first ring of neighbouring spots (approximately 100 µm radius).
+- `k_geom = 18` corresponds to the first two rings of neighbouring spots (approximately 200 µm radius).
+- Larger values rapidly increase the spatial area of the neighbourhood included.
+
+Because Visium spots form a regular hexagonal lattice, values of `k_geom` corresponding to complete neighbourhood rings (6, 18, 36, 60, ...) are often easier to interpret biologically than arbitrary values.
+In practice, `k_geom = 18` may be adequate as a starting point, as it captures the local microenvironment while avoiding excessive smoothing across larger tissue regions.
+
+For higher-resolution technologies such as Visium HD, Xenium, or MERFISH, the same value of `k_geom` represents a much smaller physical neighbourhood because capture locations are substantially closer together.
+Consequently, a value of `k_geom = 18` in Visium HD corresponds to a neighbourhood spanning only a few microns, whereas the same value in Visium V1/V2 spans approximately 200 µm.
+
+When selecting `k_geom`, it is therefore useful to consider the biological scale of interest rather than focusing only on the number of neighbours.
+For example:
+
+- Small neighbourhoods may capture immediate cell-cell interactions.
+- Intermediate neighbourhoods may capture local tissue niches.
+- Large neighbourhoods may capture broader tissue architecture but risk oversmoothing spatial boundaries.
+
+As a rule of thumb, `k_geom` should be interpreted relative to the spatial resolution of the technology and the biological tissue imaged (e.g. their cell sizes and cell densities).
+In conclusion, **choose a biological radius first, then determine what value of `k_geom` corresponds to that radius on your platform**.
 :::
 
 ## Comparison with SVGs
@@ -342,8 +374,7 @@ svg_genes <- SpatiallyVariableFeatures(visium[["SCT"]])
 # Quick Venn diagram
 gplots::venn(list(
   BANKSY = banksy_marker_genes,
-  SVGs = svg_genes,
-  Leiden = hvg_genes
+  SVGs = svg_genes
 ))
 ```
 
@@ -383,7 +414,7 @@ visium <- visium |>
   RunBanksy(
     assay = "SCT",
     lambda = 0.2,
-    k_geom = 15,
+    k_geom = 18,
     use_agf = TRUE,
     features = "all"
   )
@@ -421,7 +452,7 @@ visium <- visium |>
   RunBanksy(
     assay = "SCT",
     lambda = 0.8,
-    k_geom = 15,
+    k_geom = 18,
     use_agf = TRUE,
     features = "all",
     assay_name = "banksy_lambda_08"
@@ -461,7 +492,7 @@ banksy_umap_08 <- DimPlot(
   group.by = "banksy_cluster_lambda_08",
   label = TRUE
 ) +
-  ggtitle("lambda = 0.8, k_geom = 15") +
+  ggtitle("lambda = 0.8, k_geom = 18") +
   coord_equal() +
   theme_void()
 
@@ -498,39 +529,40 @@ For identifying cell types that may be scattered across different regions, use a
 The parameter `k_geom` controls the number of nearest neighbours used to calculate the spatially-augmented features by BANKSY.
 A larger value will likely result in a more connected graph and amplifies spatial information.
 
-Try running BANKSY with a higher `k_geom` value of 50, keeping lambda at 0.2 as in the original analysis.
-Compare the results to the original analysis (lambda = 0.2, k_geom = 15).
+Run BANKSY with a higher `k_geom` value of 60, keeping lambda at 0.2 as in the original analysis.
+This is equivalent to including four rings of spots around the focal spot on the hexagonal lattice (see discussion box above).
+Compare the results to the original analysis (lambda = 0.2, k_geom = 18).
 
 ::::: {.callout-answer}
 ```{r}
-#| label: banksy-k-50
+#| label: banksy-k-36
 
 # Run BANKSY
 visium <- visium |>
   RunBanksy(
     assay = "SCT",
     lambda = 0.2,
-    k_geom = 50,
+    k_geom = 60,
     use_agf = TRUE,
     features = "all",
-    assay_name = "banksy_k_50"
+    assay_name = "banksy_k_60"
   )
 
 # PCA, Clustering and UMAP
 visium <- visium |>
   RunPCA(
-    assay = "banksy_k_50",
-    reduction.name = "pca_banksy_k_50",
-    reduction.key = "pcabanksyk50_",
-    features = rownames(visium[["banksy_k_50"]]),
+    assay = "banksy_k_60",
+    reduction.name = "pca_banksy_k_60",
+    reduction.key = "pcabanksyk60_",
+    features = rownames(visium[["banksy_k_60"]]),
     npcs = 50
   ) |>
-  FindNeighbors(reduction = "pca_banksy_k_50", dims = 1:50) |>
-  FindClusters(cluster.name = "banksy_cluster_k_50", resolution = 0.8) |>
+  FindNeighbors(reduction = "pca_banksy_k_60", dims = 1:50) |>
+  FindClusters(cluster.name = "banksy_cluster_k_60", resolution = 0.8) |>
   RunUMAP(
-    reduction = "pca_banksy_k_50",
+    reduction = "pca_banksy_k_60",
     dims = 1:50,
-    reduction.name = "umap_banksy_k_50"
+    reduction.name = "umap_banksy_k_60"
   )
 
 # Confirm the new assay and dimensionality reductions are present
@@ -544,20 +576,20 @@ We create UMAP and spatial plots for this analysis and compare them to the origi
 #| label: compare-k
 
 # UMAP plot
-banksy_umap_k50 <- DimPlot(
+banksy_umap_k60 <- DimPlot(
   visium,
-  reduction = "umap_banksy_k_50",
-  group.by = "banksy_cluster_k_50",
+  reduction = "umap_banksy_k_60",
+  group.by = "banksy_cluster_k_60",
   label = TRUE
 ) +
-  ggtitle("Lambda = 0.2, k_geom = 50") +
+  ggtitle("Lambda = 0.2, k_geom = 60") +
   coord_equal() +
   theme_void()
 
 # Spatial plot
-banksky_spatial_k50 <- SpatialDimPlot(
+banksky_spatial_k60 <- SpatialDimPlot(
   visium,
-  group.by = "banksy_cluster_k_50",
+  group.by = "banksy_cluster_k_60",
   label = TRUE,
   label.size = 4,
   image.alpha = 0.5
@@ -565,11 +597,11 @@ banksky_spatial_k50 <- SpatialDimPlot(
   theme(legend.position = "none")
 
 # Plot alongside the previous results
-(banksy_umap_k50 + banksky_spatial_k50) /
+(banksy_umap_k60 + banksky_spatial_k60) /
   (banksy_umap + banksky_spatial)
 ```
 
-Increasing `k_geom` to 50 seems to have two effects:
+Increasing `k_geom` to 60 seems to have two effects:
 
 - Fewer clusters are identified because the larger neighbourhood size creates a more connected graph, which merges smaller spatial regions into larger domains.
 - The UMAP more closely reflects the original tissue architecture, because the larger spatial neighbourhood emphasises spatial coherence into the clustering.
