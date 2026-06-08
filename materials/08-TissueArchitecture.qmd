@@ -103,6 +103,7 @@ We use all genes for the analysis to keep it independent of previous variable fe
 
 ```{r}
 #| label: precompute-banksy
+#| cache: true
 #| echo: false
 
 # To save time, create/read precomputed object
@@ -129,6 +130,7 @@ Layers(visium[["BANKSY"]])
 
 ```{r}
 #| label: run-banksy
+#| cache: true
 #| eval: false
 
 # Run BANKSY on the Seurat object

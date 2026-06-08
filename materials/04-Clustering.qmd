@@ -120,6 +120,7 @@ You can create both of these graphs using the `FindNeighbors()` function.
 
 ```{r}
 #| label: find-neighbours
+#| cache: true
 
 # Build a nearest-neighbour graph using the first 50 PCA dimensions
 visium <- FindNeighbors(
@@ -142,6 +143,7 @@ It uses the SNN graph by default, but you can specify the NN graph if you prefer
 
 ```{r}
 #| label: find-clusters-default
+#| cache: true
 #| results: "hide"
 
 # Find clusters using the default parameters
@@ -217,6 +219,7 @@ We use the `cluster.name` parameter to give each clustering a meaningful name in
 
 ```{r}
 #| label: clustering
+#| cache: true
 #| warning: false
 #| results: "hide"
 
@@ -319,6 +322,7 @@ Let's compare this with the resolution of 0.8, which should produce more cluster
 
 ```{r}
 #| label: clustering-08
+#| cache: true
 #| results: "hide"
 #| code-fold: true
 

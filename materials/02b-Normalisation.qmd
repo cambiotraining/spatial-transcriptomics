@@ -113,6 +113,7 @@ A key argument is `vars.to.regress`, which removes variation linked to metadata 
 
 ```{r}
 #| label: sctransform
+#| cache: true
 #| warning: false
 #| message: false
 
@@ -227,6 +228,7 @@ This takes a long time to run, so you can load the preprocessed object shown bel
 
 ```{r}
 #| label: log-normalisation-scaling
+#| cache: true
 #| eval: false
 
 # Perform log-normalisation and scaling
@@ -239,6 +241,7 @@ visium <- visium |>
 
 ```{r}
 #| label: normalise-or-read-preprocessed
+#| cache: true
 #| include: false
 
 # Read the preprocessed Seurat object unless it doesn't exist

@@ -92,6 +92,7 @@ Let's apply `FindAllMarkers()` to our Visium data and explore the results.
 
 ```{r}
 #| label: find-markers
+#| cache: true
 
 # Identify marker genes for each cluster
 # Expressed in at least 5% of spots in the cluster, with a log-fold change of at least 0.25

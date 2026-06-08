@@ -52,6 +52,7 @@ When working with Seurat, we run the core steps manually:
 
 ```{r}
 #| label: scran-normalisation
+#| cache: true
 
 # Quick clustering on raw counts - internally some normalisation is applied
 quickClusters <- scran::quickCluster(visium[["Spatial"]]$counts)
@@ -120,6 +121,7 @@ For the `Scran` assay, you can use scran's variance modelling approach directly 
 
 ```{r}
 #| label: find-variable-genes-scran
+#| cache: true
 #| warning: false
 
 # Ensure Scran is the active assay

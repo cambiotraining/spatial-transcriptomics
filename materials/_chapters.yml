@@ -9,9 +9,9 @@ book:
         - materials/03-DimensionalityReduction.qmd
         - materials/04-Clustering.qmd
         - materials/04b-ClusterMarkerGenes.qmd
-        - materials/05-Deconvolution.qmd
         - materials/07-SpatiallyVariableFeatures.qmd
         - materials/08-TissueArchitecture.qmd
+        - materials/05-Deconvolution.qmd
         - materials/09-CellCellInteraction.qmd
     - part: "Case Studies"
       chapters:

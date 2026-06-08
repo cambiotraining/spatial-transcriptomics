@@ -88,6 +88,7 @@ Here, we use Moran's I and keep the top 2000 spatially variable features:
 
 ```{r}
 #| label: find-svg-moransi
+#| cache: true
 
 # Identify spatially variable features using the "moransi" method
 visium <- FindSpatiallyVariableFeatures(
@@ -181,6 +182,7 @@ visium <- readRDS("precomputed/mouse_brain_svgs.rds")
 
 ```{r}
 #| label: create-object
+#| cache: true
 #| include: false
 #| echo: false
 
@@ -200,6 +202,7 @@ if (!file.exists("precomputed/mouse_brain_svgs.rds")) {
 
 ```{r}
 #| label: find-svg-markvariogram
+#| cache: true
 #| code-fold: true
 #| eval: false
 
