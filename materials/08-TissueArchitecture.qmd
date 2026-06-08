@@ -495,7 +495,6 @@ banksy_umap_08 <- DimPlot(
   label = TRUE
 ) +
   ggtitle("lambda = 0.8, k_geom = 18") +
-  coord_equal() +
   theme_void()
 
 # Spatial plot
@@ -586,7 +585,6 @@ banksy_umap_k60 <- DimPlot(
   label = TRUE
 ) +
   ggtitle("Lambda = 0.2, k_geom = 60") +
-  coord_equal() +
   theme_void()
 
 # Spatial plot
