@@ -1,9 +1,5 @@
 # Deconvolution
 
-::: {.callout-caution}
-This section is under revision
-:::
-
 ```{r}
 #| label: setup
 #| include: false
@@ -21,12 +17,13 @@ knitr::opts_knit$set(root.dir = here::here("course_files"))
 ```
 
 ::: {.callout-tip}
-#### Learning Objectives
+### Learning Objectives
 
-- Understand the concept of deconvolution in spatial transcriptomics
-- Apply deconvolution methods to spatial transcriptomics data
-- Use the `RCTD` package for deconvolution analysis
-- Visualize and interpret deconvolution results
+- Explain why deconvolution is needed for lower-resolution spatial transcriptomics data and how spot resolution affects interpretation.
+- Prepare compatible reference and query inputs for `spacexr` from Seurat objects.
+- Run `create.RCTD()` and `run.RCTD()` with appropriate `doublet_mode` settings for the biological and technical context.
+- Extract RCTD classifications and weights and add them to Seurat metadata for downstream analysis.
+- Interpret and compare deconvolution outputs using spatial plots, thresholds, and heatmaps in the context of known tissue biology.
 :::
 
 ## Setup
@@ -67,19 +64,23 @@ As a reminder, this object was created by:
 
 ## Overview
 
-Deconvolution is a computational technique used to estimate the cellular composition of bulk gene expression data.
-In the context of spatial transcriptomics, deconvolution can help identify the proportions of different cell types within pixels/spots.
-This is relevant, especially for low resolution technologies, where each spot likely covers multiple cells (e.g. Visium V1/V2 with spots of 55 μm diameter).
-If those cells are of different types, then the gene expression profile of that spot will be a mixture of the profiles of the different cell types, which can confound downstream analysis such as clustering and tissue architecture analysis.
+Deconvolution estimates the cellular composition of mixed gene expression profiles.
+In spatial transcriptomics, this means estimating which cell types contribute to each pixel or spot.
+This is especially important for lower-resolution technologies, where each spot can capture multiple cells (for example Visium V1/V2 spots with 55 μm diameter).
+When those cells belong to different types, the measured expression is a mixture, which can affect downstream analyses such as clustering and tissue architecture analysis.
 
-There are many computational tools for deconvolution of spatial transcriptomics data, reviewed in [Gaspard-Boulinc et al. 2022](https://doi.org/10.1038/s41467-022-29913-1).
-Here, we will exemplify deconvolution using the Robust Cell Type Decomposion (RCTD) method of [Cable et al. 2022](https://doi.org/10.1038/s41587-021-00830-w), which was one of the top-performing methods in that benchmark study.
+Several tools are available for spatial deconvolution, reviewed in [Gaspard-Boulinc et al. 2022](https://doi.org/10.1038/s41467-022-29913-1).
+Here we use Robust Cell Type Decomposition (RCTD) from [Cable et al. 2022](https://doi.org/10.1038/s41587-021-00830-w), which was one of the top-performing methods in that benchmark.
 
-Briefly, RCTD works by using an annotated reference dataset (e.g. from single-cell data) and the query dataset (the spatial data to deconvolute).
-The method then uses a statistical method to infer cell mixtures in the spatial data, based on the reference dataset.
+Briefly, RCTD requires:
 
-RCTD is implemented in the [`spacexr`](https://www.bioconductor.org/packages/release/bioc/html/spacexr.html) package.
-We load that package, along with the `pheatmap`, which we will use for heatmap visualisations.
+- an annotated reference dataset (for example single-cell RNA-seq)
+- a query spatial transcriptomics dataset to deconvolute
+
+It then uses a probabilistic model to infer cell type mixtures in each spot.
+
+RCTD is implemented in the `spacexr` package.
+We also load `pheatmap` for heatmap visualisations later in the chapter.
 
 ```{r}
 #| label: load-libraries
@@ -89,23 +90,33 @@ library(spacexr)
 library(pheatmap)
 ```
 
+::: {.callout-warning collapse="true"}
+#### `spacexr` package versions
+
+Confusingly, there are two version of this package:
+
+- The original package available from GitHub ([dmcable/spacexr](https://github.com/dmcable/spacexr)) has its own object structure and implements other methods not covered here.
+- A [re-implementation in Bioconductor](https://www.bioconductor.org/packages/release/bioc/html/spacexr.html) using its standard `SpatialExperiment`/`SingleCellExperiment` objects.
+  This package only implements the RCTD analysis of the original package.
+
+While both provide similar functionality for RCTD analysis, the syntax is slightly different.
+We are using the original GitHub version here, so be aware that adaptations may be needed if you use the Bioconductor version instead.
+:::
+
 ## Reference Dataset
 
-The first step for deconvolution is to find a suitable reference dataset.
-The choice of reference dataset will depend on the tissue and organism you are working with, and may not always be available for non-model organisms.
+The first step for deconvolution is choosing a suitable reference dataset.
+That choice depends on tissue, organism and data availability, and well-annotated references may be lacking for non-model organisms.
 
-In this case, we will use a preprocessed single-cell RNA-seq dataset from the [Allen Brain Cell (ABC) Atlas](https://brain-map.org/bkp/explore/abc-atlas).
-These cells are annotated in a hierarchical manner: class → subclass → cluster, from broad cell categories to more specific cell populations.
+Here we use a preprocessed single-cell RNA-seq dataset from the [Allen Brain Cell (ABC) Atlas](https://brain-map.org/bkp/explore/abc-atlas).
+Cells are annotated hierarchically as class → subclass → cluster, from broad categories to specific cell populations.
 
-- **Class**: Broad cell type category representing major neuronal and non-neuronal groups (e.g. glutamatergic neurons, GABAergic neurons, astrocytes, oligodendrocytes).
+- **Class**: broad categories such as glutamatergic neurons, GABAergic neurons, astrocytes, and oligodendrocytes.
+- **Subclass**: groups within a class that share similar transcriptional profiles (for example Vip, Sst, and Lamp5 within GABAergic neurons).
+- **Cluster**: the most specific level, often named with distinguishing marker genes (for example *Vip Arhgap36 Hmcn1*).
 
-- **Subclass**: A division within a class, grouping cells with similar transcriptional profiles and biological characteristics (e.g. Vip, Sst, Lamp5 subclasses within GABAergic neurons).
-
-- **Cluster**: The most specific annotation level, representing related cell populations identified from single-cell transcriptomic data.
-  Cluster names are often based on marker genes that distinguish the population (e.g. *Vip Arhgap36 Hmcn1*).
-
-Let's load the object and have a quick look at the data to understand its structure.
-As this is a precomputed dataset, we will load it from an RDS file and then use the `UpdateSeuratObject()` function to ensure compatibility with the latest Seurat version.
+We start by loading the reference object and look at its structure.
+Because this is a precomputed object, we read it from RDS and run `UpdateSeuratObject()` for compatibility with current Seurat versions.
 
 ```{r}
 #| label: load-reference
@@ -118,10 +129,10 @@ ref <- UpdateSeuratObject(ref)
 Assays(ref)
 ```
 
-As this is a single-cell dataset, it contains the "RNA" assay, which is the default assay containing the raw counts.
-The data was also normalised using sctransform, which is stored in the "SCT" assay (set as the default).
+This object includes an "RNA" assay with raw counts.
+It also includes an "SCT" assay containing sctransform-normalised data, set as the default assay.
 
-The metadata contains three columns with the annotation levels: `class`, `subclass` and `cluster`.
+Metadata includes the three annotation levels: `class`, `subclass` and `cluster`.
 
 ```{r}
 #| label: reference-annotations
@@ -137,7 +148,7 @@ length(unique(ref$subclass))
 length(unique(ref$cluster))
 ```
 
-We can visualise these annotations on the UMAP to see how they relate to the clusters and to each other.
+We can visualise these annotations on a UMAP to see how they map onto cell populations.
 
 ```{r}
 #| label: reference-umaps
@@ -145,7 +156,12 @@ We can visualise these annotations on the UMAP to see how they relate to the clu
 #| code-summary: "Click to expand visualisation code"
 
 # Visualise UMAP and Spatial plots of the reference dataset with different annotation levels
-umap_class <- DimPlot(ref, reduction = "umap", group.by = "class", label = TRUE)
+umap_class <- DimPlot(
+  ref,
+  reduction = "umap",
+  group.by = "class",
+  label = TRUE
+)
 umap_subclass <- DimPlot(
   ref,
   reduction = "umap",
@@ -159,18 +175,18 @@ umap_cluster <- DimPlot(
   label = FALSE
 )
 
-(umap_class + umap_subclass) /
-  umap_cluster &
-  theme(legend.position = "none") &
-  coord_equal()
+# Assemble the UMAPs together with common settings
+(umap_class + umap_subclass + umap_cluster) &
+  coord_equal() &
+  theme_void() &
+  theme(legend.position = "none")
 ```
 
-Based on this, we can decide at what level we want to run the deconvolution analysis.
+This can help us choose the annotation level for deconvolution.
+In this chapter we use the subclass level (`r length(unique(ref$subclass))` categories), which gives a practical balance between granularity and interpretability.
 
-For our analysis, we will use the subclass annotation for deconvolution (`r length(unique(ref$subclass))` categories), as it provides a good balance between granularity and interpretability.
-
-You can count how many cells we have of each subclass in the reference dataset, as this will impact the deconvolution results.
-If you use a different single-cell dataset, **make sure that each cell type has a sufficient number of cells** (at least 25) to ensure RCTD works reliably.
+Before running RCTD, check how many reference cells are available per subclass.
+If you use a different reference dataset, ensure each cell type has enough cells (at least 25) for a reliable estimation by RCTD.
 
 ```{r}
 #| label: reference-cell-counts
@@ -182,16 +198,21 @@ table(ref$subclass)
 
 ## Preparing RCTD Data
 
-RCTD uses its own specific format for the reference and query data.
+RCTD requires both reference and query data in its own object formats.
 
 ### Reference Object
 
-The reference object requires counts, cluster identities, and number of UMIs for each cell to be extracted and formatted into a Reference object.
+The reference object needs:
 
-We extract these from our Seurat object and create the Reference object for RCTD:
+- a count matrix
+- cell type labels
+- total UMI counts per cell
+
+We extract these from the Seurat object and construct a `Reference` object.
 
 ```{r}
 #| label: prepare-reference
+#| cache: true
 
 # raw counts from the RNA assay
 ref_counts <- ref[["RNA"]]$counts
@@ -213,15 +234,16 @@ rm(ref, ref_counts, ref_cluster, ref_umis)
 
 ### Query Object
 
-Simiarly, we need to prepare the spatial transcriptomics data that we want to deconvolute with RCTD.
-We will convert the Seurat object to a format compatible with RCTD, which requires:
+Similarly, we prepare the spatial dataset to deconvolute.
+RCTD needs:
 
-- The raw counts from the "Spatial" assay
-- The spatial coordinates of the spots
-- The total number of UMIs for each spot
+- raw counts from the "Spatial" assay
+- spot coordinates
+- total UMI counts per spot
 
 ```{r}
 #| label: prepare-query
+#| cache: true
 
 # raw counts
 query_counts <- visium[["Spatial"]]$counts
@@ -241,18 +263,17 @@ rm(query_counts, query_coords, query_umis)
 
 ## Running RCTD
 
-Once we have our reference and query objects prepared, we can run the deconvolution analysis using RCTD.
-This involves two steps:
+With reference and query objects prepared, we can run deconvolution in two steps:
 
-- `create.RCTD()`: creates the RCTD object using the reference and query data.
-  This step preprocesses and prepares the data for deconvolution.
-  It calculates the gene expression profiles for each cell type in the reference dataset, filters genes to retain only those that are differentially expressed between the cell labels used for deconvolution, and estimates a normalisation factor to account for platform differences (e.g. single-cell versus single-nucleus).
-- `run.RCTD()`: runs the deconvolution analysis, which estimates the proportions of different cell types in each spot based on the reference single-cell dataset and the spatial transcriptomics data.
+- `create.RCTD()`: builds the RCTD object and prepares model inputs.
+  This includes estimating cell type profiles from the reference, selecting informative genes (differentially expressed between classes), and estimating a normalisation factor to account for platform differences in the reference (e.g. single-cell versus single-nucleus).
+- `run.RCTD()`: fits the model and estimates cell type proportions for each spot.
 
-Let's run the first step to create the RCTD object:
+Run the first step to create the RCTD object:
 
 ```{r}
 #| label: create-rctd
+#| results: "hide"
 
 # Create RCTD object on 8 cores
 rctd <- create.RCTD(query, reference, max_cores = 8)
@@ -261,31 +282,28 @@ rctd <- create.RCTD(query, reference, max_cores = 8)
 rm(query, reference)
 ```
 
-We used **`max_cores = 8`** to speed up the computation, which can be time-consuming for larger datasets.
+We set **`max_cores = 8`** to reduce runtime, which can be substantial for larger datasets.
 
-Once the RCTD object is created, we can run the deconvolution analysis using the `run.RCTD()` function.
-This function will estimate the proportions of different cell types in each spot based on the reference single-cell dataset and the spatial transcriptomics data.
+RCTD supports three deconvolution modes through `doublet_mode`:
 
-RCTD has three modes for deconvolution, specified with the `doublet_mode` parameter:
+- `"doublet"`: allows 1-2 cell types per spot.
+  This is often suitable for higher-resolution spatial technologies.
+- `"multi"`: similar to doublet mode but allows more than two cell types, up to `MAX_MULTI_TYPES` in `create.RCTD()` (default 4).
+- `"full"`: places no explicit upper limit on the number of assigned cell types.
 
-- `"doublet"`: limits the cell type assignment to 1-2 types.
-  This is usually suitable for higher resolution spatial technologies.
-- `"multi"`: like doublet mode, but allows for more than 2 cell types, up to a maximum defined by the `MAX_MULTI_TYPES` parameter in the `create.RCTD()` function (4 by default).
-- `"full"`: does not limit the number of cell types assigned to each spot.
+Constrained modes ("doublet" and "multi") can reduce overfitting, where many very small proportions are assigned to each spot.
+The best choice depends on tissue complexity and spatial resolution of the technology.
 
-The reason to include `doublet` and `multi` modes is that the model can sometimes overfit the data and assign more cell types to each spot than there are (e.g. with very small proportions).
-Therefore, restricting the upper limit of cell types for each spot can help to get more reliable results.
-The choice comes down to your knowledge of the tissue and the resolution of the techonology you are using.
-
-For now, we will use the function in "doublet" mode, but later we look at the results in "full" mode.
-Note that RCTD is a computationally demanding analysis.
-For that reason, we provide a pre-processed file that you can read, but you can expand the code block below to see the code used for running it.
+We start with `"doublet"` mode and later compare results with `"full"` mode.
+RCTD is computationally demanding, so we provide a precomputed object.
+You can expand the code block below to see the command used.
 
 ```{r}
 #| label: run-rctd-doublet
 #| cache: true
 #| code-fold: true
 #| code-summary: "Click for `run.RCTD()` command - takes a long time to run!"
+#| results: "hide"
 
 # This will run about ~12-15 minutes on 8 cores
 rctd <- run.RCTD(rctd, doublet_mode = "doublet")
@@ -295,7 +313,9 @@ rctd <- run.RCTD(rctd, doublet_mode = "doublet")
 #| label: save-rctd-doublet
 #| include: false
 
-saveRDS(rctd, "precomputed/mouse_brain_rctd_doublet.rds")
+if (!file.exists("precomputed/mouse_brain_rctd_doublet.rds")) {
+  saveRDS(rctd, "precomputed/mouse_brain_rctd_doublet.rds")
+}
 ```
 
 ```{r}
@@ -305,20 +325,20 @@ saveRDS(rctd, "precomputed/mouse_brain_rctd_doublet.rds")
 rctd <- readRDS("precomputed/mouse_brain_rctd_doublet.rds")
 ```
 
-This concludes the deconvolution analysis with RCTD.
-We can now add the results back into the Seurat visium object and visualise them.
-Because we ran RCTD in doublet mode, we have two sets of results: one for singlets and one for doublets.
-We will check how many spots are doublets and compare both results.
+We can now add the RCTD results to the Seurat object and for further analysis.
+Because we ran in doublet mode, we expect output describing major and secondary cell types per spot.
 
 ## Extracting deconvolution results
 
-The RCTD object contains several components from the analysis, which we will extract to a data frame and then add to the metadata of our Seurat object.
-The key components we will extract at this stage are:
+The RCTD object stores results in several components.
+We extract the relevant parts into a data frame and then add them to the Seurat metadata.
 
-- The cell type assignment to each spot
-- The *weights* associated with each type, which are effectively the estimated proportions of each cell type
+We will extract:
 
-These are stored within the `rctd@results` slot of the object, and we extract both into a data frame:
+- spot-level classification
+- cell type weights (estimated proportions)
+
+These values are in `rctd@results`:
 
 ```{r}
 #| label: rctd-doublet-results-df
@@ -343,13 +363,13 @@ names(doublet_results) <- c(
 head(doublet_results)
 ```
 
-We have the following columns:
+Column meanings:
 
-- `spot_class` indicates the type of spot classification: "singlet", "doublet_uncertain", "doublet_certain" and "reject".
-- `first_type` and `second_type` indicate the two types of cells identified in the spot (using the categories from the `subclass` variable we used in the reference dataset).
-- `first_weight` and `second_weight` indicate the proportion of `first_type` and `second_type` cells in the spot, respectively.
+- `spot_class`: spot classification (`"singlet"`, `"doublet_uncertain"`, `"doublet_certain"`, `"reject"`).
+- `first_type` and `second_type`: the top two cell type assignments (using reference `subclass` labels).
+- `first_weight` and `second_weight`: estimated proportions for those two assigned types.
 
-We can start by counting how many cells we have of each class:
+Start by counting spots in each class:
 
 ```{r}
 #| label: count-doublet-class
@@ -360,12 +380,10 @@ doublet_results |>
 ```
 
 We have no spots classified as "singlet", which is expected given the spot size of Visium v1 and the complexity of the tissue.
-Most spots are classified as "doublet_certain", which means that the model is confident that there are at least two cell types in those spots.
-A smaller proportion of spots are classified as "doublet_uncertain", which means that the model is less confident about the presence of two cell types in those spots.
-Finally, a small proportion of spots are classified as "reject", which means that the model was not able to assign a cell type to those spots with confidence.
+A high `"doublet_certain"` count indicates many spots are confidently modelled as mixtures of at least two types.
+`"doublet_uncertain"` and `"reject"` spots are useful to look at as well, because they can indicate ambiguous expression profiles or reference mismatches.
 
-We can add this to the metadata of our Seurat object for some visualisations.
-For example, we can visualise where each spot is classified as a doublet or not.
+We can add these classifications to our Seurat metadata and visualise their spatial distribution:
 
 ```{r}
 #| label: add-doublet-to-seurat
@@ -386,7 +404,7 @@ SpatialDimPlot(visium, group.by = "spot_class") +
   ggtitle("Spot classification by RCTD")
 ```
 
-We can also visualise the first and second cell type identified by RCTD, and compare it to the clusters we identified earlier using Leiden.
+We can also compare RCTD type assignments with the Leiden clusters identified earlier:
 
 ```{r}
 #| label: visualise-doublet-types
@@ -423,23 +441,21 @@ leiden_cluster_plot <- SpatialDimPlot(
 
 ## Full cell type analysis
 
-We have so far only looked at the major and secondary cell type identified by RCTD in doublet mode.
-Doublet mode is useful to identify the two most likely cell types in each spot and best suited for datasets where most spots contain only one or two cell types.
+So far we have focused on doublet mode, which reports the top one or two cell types per spot.
+This can be useful when spots are likely to contain only a small number of cell types.
 
-This is likely not the case for the Visium v1 data we are using here, as each spot likely contains multiple cell types based on the spot size of 55 μm diameter.
+For Visium v1, each 55 μm spot often contains multiple cells from several types.
+In this case, `"full"` mode may provide a more informative view of cell type composition in our spots.
 
-However, RCTD provides an additional **"full"** mode which deconvolves each spot to any number of cell types.
-Although it might sound like a good idea to always run the model in "full" mode, it is important to remember that the model may overfit the data, so it's not a bad idea to restrict to doublets when working with high-resolution data.
-In our case, however, it makes sense to attempt running the analysis in full mode.
-
-As this takes a long time to run, we provide a pre-computed file for you to read in.
-But you can see the code used to produce it below.
+Because this run is slow, we provide a precomputed file.
+The code below shows how it was generated.
 
 ```{r}
 #| label: run-rctd-multi
 #| cache: true
 #| code-fold: true
 #| code-summary: "Click for `run.RCTD()` command - takes a long time to run!"
+#| results: "hide"
 
 # Run RCTD in full mode
 rctd_full <- run.RCTD(rctd, doublet_mode = "full")
@@ -449,7 +465,9 @@ rctd_full <- run.RCTD(rctd, doublet_mode = "full")
 #| label: save-rctd-multi
 #| include: false
 
-saveRDS(rctd_full, "precomputed/mouse_brain_rctd_full.rds")
+if (!file.exists("precomputed/mouse_brain_rctd_full.rds")) {
+  saveRDS(rctd_full, "precomputed/mouse_brain_rctd_full.rds")
+}
 ```
 
 ```{r}
@@ -460,14 +478,26 @@ saveRDS(rctd_full, "precomputed/mouse_brain_rctd_full.rds")
 rctd_full <- readRDS("precomputed/mouse_brain_rctd_full.rds")
 ```
 
+::: {.callout-note collapse="true"}
+#### Should I always run RCTD in "full" mode?
+
+Although it might sound like a good idea to always run the model in "full" mode, it is important to remember that the model may overfit the data, so it's not a bad idea to restrict to doublets when working with high-resolution data.
+
+In our case, as we are working with a low-resolution technology, it makes sense to attempt running the analysis in full mode.
+:::
+
 ### Extract and visualise cell weights
 
-When running in full mode, the result is provided as a matrix of weights for all cell types in the reference dataset, which are stored in `rctd@results$weights`.
-This is a matrix with the same number of rows as the number of spots and the same number of columns as the number of cell types in the reference dataset, where each value represents the proportion of that cell type in that spot.
-This can be useful for a more full exploration of the results, or to focus the analysis on specific cell types of interest.
+In full mode, RCTD returns a weight matrix in `rctd@results$weights`.
+Rows correspond to spots, columns correspond to reference cell types, and each value is the estimated proportion of a cell type in a spot.
 
-The code below shows you how to extract these results from the RCTD object, and store them in a data frame for plotting with ggplot2.
-We plot the weights for all cell subclasses to get a full overview of the classification results from RCTD.
+This can be used for two common tasks:
+
+- broad exploration of all cell types
+- analysis of specific types of interest
+
+The next code block extracts and reshapes these weights for visualisation with ggplot2.
+We plot all subclasses to get a global view of composition patterns.
 
 ```{r}
 #| label: visualise-weights
@@ -489,8 +519,9 @@ rctd_weights <- rctd_weights |>
 
 # Visualise weights for each subclass
 # Note we're capping the colour scale to 0.5 to better visualise differences
+# We also use negative y values to match the orientation of the spatial plot
 rctd_weights |>
-  ggplot(aes(x, y, colour = weight)) +
+  ggplot(aes(x, -y, colour = weight)) +
   geom_point(size = 0.1) +
   facet_wrap(~subclass) +
   theme_void() +
@@ -498,8 +529,10 @@ rctd_weights |>
 ```
 
 As always, you should **interpret these results grounded in biological knowledge** of the tissue and cell types you are looking at.
+You can focus on whether high-weight regions align with expected anatomical locations.
+Unexpected patterns can reflect genuine biology, reference limitations, or model overfitting.
 
-For example, take cell type "L2_3_IT" (which stands for [layer 2/3 intratelencephalic neurons](https://knowledge.brain-map.org/celltypes/CCN202002013/CS202002013_183)):
+For example, consider cell type "L2_3_IT" (layer 2/3 intratelencephalic neurons; see [ABC Atlas entry](https://knowledge.brain-map.org/celltypes/CCN202002013/CS202002013_183)):
 
 ```{r}
 #| label: highlight-rctd-cells
@@ -512,16 +545,19 @@ SpatialPlot(
 )
 ```
 
-We can see these occur in the supperficial cortex layers, which is what we might expect for this cell type.
-However, we also see them in inner tissues, which might not be expected.
-This could be due to the fact that the model is overfitting the data and assigning this cell type to spots where it is not actually present.
-It could also be that our reference dataset does not contain all the cell types present in the tissue, and therefore the model is assigning the closest cell type from the reference to those spots.
+These spots appear in superficial cortical layers, which is biologically plausible.
+However, we also see a strong signal in inner tissues, which may be less expected.
 
-This is why it's important to **carefully interpret the results of deconvolution and use additional information to validate the results** (e.g. known marker genes, spatial location, etc.).
+Here are a couple of reasons why you might see a signal in less expected regions:
+
+- Model overfitting assigns low-confidence contributions, when in fact that cell type is absent.
+- The reference lacks true matching cell states, so the model assigns the closest available type.
+
+For this reason, treat deconvolution as one source of evidence and cross-check with marker genes, spatial context and tissue knowledge.
 
 ### Add cell weights to Seurat
 
-As we did before with our doublet detection mode, we can also add these weights to the Seurat metadata object.
+As with doublet-mode results, we can add full-mode weights to Seurat metadata:
 
 ```{r}
 #| label: add-rctd-full-to-metadata
@@ -533,14 +569,13 @@ visium <- AddMetaData(visium, rctd_full@results$weights)
 colnames(visium[[]])
 ```
 
-We now have one column for each cell type, with the respective weight assigned by RCTD.
-You can use these columns to visualise in spatial plots and UMAPs just as you would any other column.
+You now have one metadata column per cell type, containing RCTD weight estimates.
+These columns can be used directly in spatial plots or dimensionality-reduction plots.
 
 ### Identify most abundant type
 
-We can also add a column metadata that determines which is the most abundant cell type in each spot.
-We go back to our long format data frame of weights, and for each spot identify the cell type with the highest weight.
-Then, we add this information back to the Seurat metadata.
+We can also assign each spot its most abundant inferred cell type.
+Using the long-format weights table, we select the highest-weight subclass per spot and add it back to metadata.
 
 ```{r}
 #| label: add-max-type-to-metadata
@@ -567,7 +602,7 @@ SpatialDimPlot(visium, group.by = "rctd_max_type") +
   ggtitle("Most abundant cell type in each spot")
 ```
 
-You could also add a threshold to only assign a cell type if the weight is above a certain value, for example > 0.5.
+You can also apply a confidence threshold, for example only assigning a label if the maximum weight is above 0.5:
 
 ```{r}
 #| label: add-threshold-to-max-type
@@ -584,16 +619,16 @@ SpatialDimPlot(visium, group.by = "rctd_max_type_gt_05") +
   ggtitle("Most abundant cell type in each spot (weight > 0.5)")
 ```
 
-As we can see, very few spots have cells with > 50% abundance, suggesting that most spots contain a mixture of cell types, which might be expected for Visium v1 data.
-It may also be the case that, as we're running the analysis in full mode, the model is assigning small weights to many cell types, and therefore the maximum weight for each spot is relatively low.
+If very few spots pass this threshold, that suggests most spots are mixed, which is expected for Visium v1.
+It can also indicate that full mode is distributing small weights across many candidate types.
 
 You can explore these thresholds to explore the deconvolution results in different ways, and to identify the most likely cell type in each spot based on the weights assigned by RCTD.
 
 ### Weight Heatmaps
 
-Finally, we can visualise the proportions of each cell type in each spot as a heatmap.
-We could use information about our prior clustering to order the spots on the heatmap, for example.
-Here, we order the spots based on the Leiden clusters we identified in the previous chapter, which are stored in the `Leiden_08` column of the metadata.
+We can also inspect cell type proportions as a heatmap.
+One useful strategy is ordering spots by previous clustering labels.
+Here we order spots by the `Leiden_08` metadata column from the previous chapter.
 
 ```{r}
 #| label: heatmap-weights
@@ -617,10 +652,10 @@ pheatmap(
 ```
 
 We can see some correlation between the Leiden clusters and the cell type proportions, which is expected as both are based on gene expression profiles.
-This is not perfect however, we can also see many scattered spots with high proportions of certain cell types that do not correlate with these clusters.
-This is not unexpected, as we know that each spot likely contains multiple cell types, and the clustering is based on the overall gene expression profile of the spot, which can be influenced by the presence of multiple cell types.
+But this is not a perfect alignment, we can see many scattered spots with high proportions of certain cell types that do not correlate with these clusters.
+We might expect this result as each spot likely contains multiple cell types, and the clustering is based on the overall gene expression profile of the spot, which can be confused by the presence of multiple cell types.
 
-Alternatively, we could also cluster the columns of the heatmap to identify groups of spots with similar cell type compositions.
+Alternatively, you can cluster the heatmap columns to group spots by composition similarity:
 
 ```{r}
 #| label: heatmap-cluster-columns
@@ -636,13 +671,14 @@ pheatmap(
 )
 ```
 
-We can see that the spots are clustered into groups with similar cell type compositions, which can be useful to identify spatial domains with similar cellular compositions.
+This view shows spot groups that do not perfectly match expression-defined clusters.
 
-For example, there is a very small cluster of spots with high proportions of "L6b":
+For example, there is a small cluster of spots with high "L6b" proportions:
 
 ```{r}
 #| label: spatial-L6b
 #| code-fold: true
+#| fig-height: 4
 
 # Spatial plot for L6b weight
 spatial_l6b <- SpatialFeaturePlot(visium, features = "L6b") +
@@ -661,19 +697,18 @@ umap_l6b <- DimPlot(
 spatial_l6b + umap_l6b
 ```
 
-These form a very narrow region in our tissue, in fact often spanning a single line of spots.
-This is consistent with the fact that layer 6b neurons are a very specific cell type located in a narrow layer of the cortex, and therefore we would expect to find them in a small number of spots in our data.
+These spots form a narrow spatial band, often close to a single line of spots.
+That pattern is consistent with layer 6b neurons occupying a thin cortical layer.
 
-This also illustrates the importance of resolution when analysing spatial data.
-For example, in our previous [spatial clustering chapter](08-TissueArchitecture.qmd), we identified spatial clusters using BANKSY.
-We used `k_geom = 18` for our analysis, which means that spatial expression features were averaged across 18 neighbours for each spot.
-As we can see, for a narrow region like this, this averaging across neighbours can lead to the signal being diluted and not being identified as a distinct spatial domain, which is what we observed in our previous analysis.
+This example also shows why analysis resolution matters.
+In the previous [spatial clustering chapter](08-TissueArchitecture.qmd), BANKSY used `k_geom = 18`, averaging spatial features across 18 neighbouring spots (two rings of spots around each spot).
+For very narrow structures, this averaging can dilute local signals and make small sub-domains harder to identify.
 
-This again highlights the importance of **biological knowledge of your tissue** and **considering the resolution of your data**.
+This again highlights the importance of **biological knowledge** of your tissue and considering the **resolution of the technology** used.
 
 ## Exporting Seurat Object
 
-Optionally, we can save the Seurat object with the deconvolution results added to the metadata for future use.
+Optionally, save the Seurat object with deconvolution results for later use:
 
 ```{r}
 #| label: save-seurat-object
@@ -687,16 +722,32 @@ saveRDS(visium, "results/mouse_brain_visium_deconvolution.rds")
 #| label: save-participant-data
 #| include: false
 
-saveRDS(visium, "precomputed/mouse_brain_visium_deconvolution.rds")
+# Save participant data
+if (!file.exists("precomputed/mouse_brain_visium_deconvolution.rds")) {
+  saveRDS(visium, "precomputed/mouse_brain_visium_deconvolution.rds")
+}
 ```
 
 ## Summary
 
 ::: {.callout-tip}
-#### Key Points
+### Key Points
 
-- Deconvolution is a computational technique used to estimate the cellular composition of complex tissues from bulk gene expression data.
-- The `RCTD` package provides functions for deconvolution of spatial transcriptomics data.
-- Preparing both single-cell reference data and spatial transcriptomics data is essential for successful deconvolution analysis.
-- Parallel processing can significantly speed up the computation time for deconvolution.
+- Deconvolution helps identify cell type mixtures in spatial spots where multiple cells contribute to one expression profile.
+  - Spot size and tissue complexity determine how strongly mixed each spot is likely to be.
+  - Mode choice (`doublet` versus `full`) depends on the expected number of contributing cell types.
+
+- `spacexr` requires reference and query objects for model fitting.
+  - `Reference()` uses raw counts, cell labels, and per-cell UMIs from the single-cell reference.
+  - `SpatialRNA()` uses spot coordinates, raw counts, and per-spot UMIs from the spatial dataset.
+
+- RCTD runs in two stages: object construction with `create.RCTD()` and deconvolution with `run.RCTD()`.
+
+- Doublet-mode outputs gives spot classes and top cell type assignments that can be integrated into Seurat metadata.
+  - `spot_class` distinguishes confident doublets, uncertain doublets, and rejected spots.
+  - `first_type`/`second_type` and their weights provide the two inferred cell types and their frequencies.
+
+- Full-mode weights can be used for a more exhaustive analysis of cell types.
+  - Heatmaps and spatial plots can be used to compare composition patterns with previous clustering results.
+  - Results should always be compared to known tissue biology and interpreted with caution.
 :::
