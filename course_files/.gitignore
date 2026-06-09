@@ -1,0 +1,8 @@
+# Ignore everything
+*
+
+# Do not ignore the .gitignore itself
+!.gitignore
+
+# Do not ignore the target file
+!download_course_files.sh
