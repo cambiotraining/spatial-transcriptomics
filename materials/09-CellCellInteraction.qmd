@@ -17,12 +17,13 @@ knitr::opts_knit$set(root.dir = here::here("course_files"))
 ```
 
 ::: {.callout-tip}
-#### Learning Objectives
+### Learning Objectives
 
-- Understand the concept of cell-cell interactions in spatial transcriptomics
-- Learn how to analyze cell-cell interactions using the `CellChat` package
-- Interpret the results of cell-cell interaction analysis
-- Explore different methods for visualizing cell-cell interactions
+- Explain how cell-cell communication can be inferred from ligand-receptor expression patterns in spatial transcriptomics data.
+- Create a `CellChat` object from a Seurat object and prepare the spatial inputs it needs.
+- Select and subset a suitable ligand-receptor database for analysis.
+- Compute communication probabilities and pathway-level scores with `CellChat` and produce visualisations from these results.
+- Describe the main limitations of CCC analysis.
 :::
 
 ## Setup
@@ -64,34 +65,34 @@ As a reminder, this object was created by:
 
 ## Overview
 
-In multicellular tissues, cells communicate with one another to coordinate processes such as development, immune responses and disease progression.
-One of the most common communication mechanisms involves **signalling molecules (ligands)** produced by one cell and detected by **receptors** expressed on another cell.
-Receptor-mediated pathways can then effect gene expression, cellular behaviour and cell fate decisions.
+Cells in multicellular tissues communicate to coordinate development, immune responses and disease progression.
+One common communication mechanism involves **signalling molecules (ligands)** produced by one cell and detected by **receptors** on another cell.
+Receptor-mediated pathways can then influence gene expression, cell behaviour and cell fate decisions.
 
-Single-cell and spatial transcriptomics allow looking at these interactions based on gene expression across thousands of cells simultaneously.
-Cell-cell communication analysis (CCC) uses **prior knowledge of ligand-receptor pairs** to identify potential signalling relationships between cell populations.
-The general idea is that cells expressing a ligand are considered potential "senders", while cells expressing the corresponding receptor are considered potential "receivers".
-This can be used to build an interaction network for generating hypotheses of how information flows through a tissue.
+Single-cell and spatial transcriptomics let us study these interactions by measuring gene expression across many cells at once.
+Cell-cell communication analysis (CCC) uses **curated ligand-receptor pairs** to infer which signalling relationships are most likely between cell populations.
+The basic idea is that cells expressing a ligand are potential senders, and cells expressing the matching receptor are potential receivers.
+That makes it possible to build an interaction network and form hypotheses about how information moves through a tissue.
 
-It is important to emphasise that **CCC methods rely on curated databases of known ligand-receptor interactions**.
-Rather than discovering entirely new signalling relationships, these methods use observed gene expression patterns to identify which known interactions are most likely to occur between cell populations.
+CCC methods do not discover new signalling pathways.
+They rely on curated databases of known ligand-receptor interactions and use the observed expression patterns to identify which of those interactions are most plausible in the data.
 
-Spatial transcriptomics provides additional information beyond single-cell transcriptomics by preserving the physical location of cells within a tissue, allowing inferred interactions to be evaluated in the context of spatial proximity.
-This is useful as many signalling mechanisms occur locally and are therefore more plausible when sender and receiver cells are located near one another.
-This means that we can explore how cell types communicate and influence each other within the tissue microenvironment.
+Spatial transcriptomics adds location information to this analysis.
+That helps because many signalling processes act locally, so sender and receiver cells are more plausible when they are near one another in the tissue.
+We can therefore ask how cell types communicate within the tissue microenvironment, not just whether they express compatible ligands and receptors.
 
-Many packages have been developed for analysing cell-cell communication (CCC) from single-cell and spatial transcriptomics data.
-As is the case with many spatial analysis workflows, this is an active area of development, and we encourage you to regularly look for benchmark studies comparing current tools.
-For example, [Ku et al. 2026](https://doi.org/10.1186/s13059-026-04063-5) benchmarked a range of spatially-aware and non-spatial CCC inference methods across multiple spatial transcriptomics technologies.
+Many packages now support cell-cell communication analysis from single-cell and spatial transcriptomics data.
+As with much of spatial analysis, this is an active area of development, so it is worth checking benchmark studies regularly.
+For example, [Ku et al. 2026](https://doi.org/10.1186/s13059-026-04063-5) compared several spatial and non-spatial CCC methods across multiple spatial transcriptomics technologies.
 
-One of their main conclusions is that there is no universally best method for CCC inference across all spatial technologies.
-Performance depends on factors such as spatial resolution, cell type composition and the underlying assumptions of the method.
-In general, methods originally developed for single-cell data perform well on high-resolution spatial datasets, while spatially-aware methods can give complementary information for lower-resolution technologies.
+Their main conclusion was that there is no single best method for all datasets.
+Performance depends on spatial resolution, cell type composition and the assumptions of the methods.
+In general, methods designed for single-cell data perform well on high-resolution spatial datasets, while spatially aware methods can provide complementary information for lower-resolution technologies.
 
-We discuss more caveats and limitations of these methods at the end of this chapter.
-For now, we will demonstrate how to perform CCC using a popular package developed for single-cell CCC inference: `CellChat`.
-Note that the benchmark study above uses CellChat v2 (which we are also using here), but [v3 is under development](https://github.com/jinworks/SpatialCellChat) and provides further functionality for spatial data.
-This emphasises the speed of development in the field, and why regularly looking for benchmark studies is important.
+We discuss caveats and limitations at the end of the chapter.
+For now, we will use `CellChat`, a popular package for CCC analysis that was originally developed for single-cell data and is now used for spatial data as well.
+The benchmark study above used CellChat v2, which is also the version we use here.
+[SpatialCellChat](https://github.com/jinworks/SpatialCellChat) (aka CellChat v3) is under development and adds more spatial functionality.
 
 ::: {.callout-tip}
 #### Acronyms used in this chapter
@@ -102,20 +103,20 @@ The literature also frequently uses the term **cell-cell interaction (CCI)**, an
 
 ## CellChat Analysis
 
-*CellChat* is an R package for inference of cell-cell communication (CCC) networks from single-cell and spatial transcriptomics data.
+CellChat is an R package for inferring cell-cell communication networks from single-cell and spatial transcriptomics data.
 It combines gene expression measurements with a curated database of ligand-receptor interactions to estimate the probability of communication between cell populations.
-It also accounts for multi-subunit receptor complexes, cofactors and pathway-level organisation, which improves its performance compared to methods that only use ligand-receptor pairs.
+It also accounts for multi-subunit receptor complexes, cofactors and pathway-level organisation, which improves performance compared with methods that only use ligand-receptor pairs.
 
-These are the steps required for the analysis:
+The analysis involves the following steps:
 
 - Create the CellChat object
 - Set the ligand-receptor interaction database
-- Idenfity overexpressed genes and interactions
-- Compute communication probabilities and infer signaling pathways
+- Identify variable genes and interactions
+- Compute communication probabilities and infer signalling pathways
 - Visualise and explore the results
 
-We will go through each of these steps in detail.
-First, let's load the library:
+We will work through each step in turn.
+First, load the package:
 
 ```{r}
 #| label: load-cellchat
@@ -126,17 +127,18 @@ library(CellChat)
 
 ### Create CellChat Object
 
-The CellChat object can be created directly from a Seurat object using the `createCellChat()` function.
+You can create the CellChat object directly from a Seurat object with `createCellChat()`.
 
-Besides the Seurat object, this function requires a data frame of **spatial conversion factors** with two columns:
+In spatial mode, this function also needs a data frame of **spatial conversion factors** with two columns:
 
-- **`ratio`**: the conversion factor for converting spatial coordinates from pixels to microns.
-  For example a ratio of 0.1 would mean that 1 pixel = 0.1 μm.
-- **`tol`**: a tolerance factor to allow flexibility when calculating interaction ranges between cells.
+- **`ratio`**: the conversion factor that turns spatial coordinates from pixels into microns.
+  For example, a ratio of 0.1 means that 1 pixel equals 0.1 μm.
+- **`tol`**: a tolerance factor that gives CellChat some flexibility when it calculates interaction ranges.
   The authors recommend setting this to half the spot diameter in microns.
 
-The `ratio` factor can be calculated based on the spatial resolution of the data, as the ratio of the spot diameter in microns to the spot diameter in pixels.
-The spot diameter in pixels is available as image metadata (remember you can list images in the Seurat object with `Images()`).
+The `ratio` value can be calculated from the spatial resolution of the data.
+It is the spot diameter in microns divided by the spot diameter in pixels.
+The spot diameter in pixels is stored as image metadata, and you can obtain the image list in a Seurat object with `Images()`.
 
 ```{r}
 #| label: view-scale-factors
@@ -145,9 +147,10 @@ The spot diameter in pixels is available as image metadata (remember you can lis
 ScaleFactors(visium[["slice1"]])
 ```
 
-The `spot` entry is what we're interesting in, and gives the number of pixels corresponding to the spot diameter (55 μm for 10X Visium v1/v2).
+The `spot` entry is the one we need here.
+It gives the number of pixels corresponding to the spot diameter, which is 55 μm for 10X Visium v1/v2.
 
-We can therefore create our spatial factors data frame as follows:
+We can now create the spatial factors data frame:
 
 ```{r}
 #| label: create-spatial-factors
@@ -161,7 +164,8 @@ spatial_factors <- data.frame(
 spatial_factors
 ```
 
-We also need a separate data frame with the spatial coordinates of each spot, which can be extracted from the Seurat object using the `GetTissueCoordinates()` function.
+CellChat also needs a data frame with the spatial coordinates of each spot.
+We can extract those coordinates from the Seurat object with `GetTissueCoordinates()`.
 
 ```{r}
 #| label: extract-spatial-coordinates
@@ -172,8 +176,8 @@ spatial_coords <- GetTissueCoordinates(visium, image = "slice1")[, c("x", "y")]
 head(spatial_coords)
 ```
 
-Before creating the CellChat object, we can check the distances of the spots to each other, which will be used in the CellChat analysis.
-We know that for 10X Visium v1 the minimum distance should be roughly 100 μm between the centers of adjacent spots, so this is a good check that our spatial factors are correct.
+Before creating the CellChat object, it is worth checking the spot distances that CellChat will use.
+For 10X Visium v1, the minimum distance should be roughly 100 μm between the centres of adjacent spots, so this is a useful sanity check on the spatial conversion factors.
 
 ```{r}
 #| label: check-spot-distances
@@ -190,9 +194,9 @@ spot_dists <- computeCellDistance(
 min(spot_dists[spot_dists != 0])
 ```
 
-This value is smaller than the 100 μm, but still within a reasonable range.
+The observed value is slightly below 100 μm, but it is close enough to suggest that the spatial factors are sensible.
 
-With our scale factors and spatial coordinates prepared, we can now create the CellChat object using the `createCellChat()` function.
+With the scale factors and spatial coordinates prepared, we can create the CellChat object with `createCellChat()`.
 
 ```{r}
 #| label: create-cellchat
@@ -211,25 +215,26 @@ cell_chat <- createCellChat(
 cell_chat@idents <- droplevels(cell_chat@idents)
 ```
 
-A few of the critical options we used include:
+The important options here are:
 
-- `assay = "SCT"`: CellChat requires log-normalised expression data.
-  We use the log-normalised data from the sctransform method ("SCT" assay).
-  You could also specify `assay = "Spatial"` if you wanted to use the log-normalised data from the `LogNormalize` method, which is stored in that assay.
-- `datatype = "spatial"`: this tells CellChat that we are working with spatial transcriptomics data, which allows it to use the spatial coordinates and factors in the analysis.
-- `group.by = "first_type"`: this specifies the metadata column to use for cell type labels.
-  We used the first cell type label from our deconvolution results (`first_type` column in the metadata).
-  However, you could choose to use a different label, for example the `banksy_cluster` or the `Leiden_08` metadata columns from our spatial and non-spatial clustering analysis, respectively.
-- We also provided the spatial coordinates and factors we prepared in the previous steps.
+- `assay = "SCT"`: CellChat needs log-normalised expression data.
+  We use the log-normalised data from the `SCTransform()` workflow, which are stored in the `SCT` assay.
+  You could also use `assay = "Spatial"` if you wanted to use the log-normalised data from `LogNormalize()`, which are stored in that assay.
+- `datatype = "spatial"`: this tells CellChat that we are working with spatial transcriptomics data, so it can use the spatial coordinates and factors in the analysis.
+- `group.by = "first_type"`: this specifies the metadata column that contains the cell type labels.
+  We use the first cell type label from the deconvolution results (`first_type` in the metadata).
+  You could also choose a different label, such as `banksy_clusters` or `Leiden_08`.
+- We also provide the spatial coordinates and factors prepared in the previous steps.
 
 ### Ligand-receptor database
 
-One critical aspect of CCC analysis is the choice of ligand-receptor interaction database.
+The choice of ligand-receptor interaction database is a key part of CCC analysis.
+It determines which interactions CellChat can consider, so it can affect the results substantially.
 CellChat provides three built-in databases: `CellChatDB.mouse`, `CellChatDB.human` and `CellChatDB.zebrafish`.
-For custom databases, you can use `updateCellChatDB()`, providing your own ligand-receptor interaction pairs (see the function's help for details).
+For custom databases, you can use `updateCellChatDB()` and supply your own ligand-receptor pairs.
 
 Here, we use the mouse database, which contains `r nrow(CellChatDB.mouse$interaction)` ligand-receptor interactions.
-We can quickly visualise the categories of ligand-receptor interactions available in this database:
+We can quickly inspect the interaction categories available in this database:
 
 ```{r}
 #| label: visualise-cellchat-db
@@ -238,13 +243,12 @@ We can quickly visualise the categories of ligand-receptor interactions availabl
 showDatabaseCategory(CellChatDB.mouse)
 ```
 
-Each category represents a different type of signaling mechanism that can occur between cells.
-In the following code chunk, we will:
+Each category corresponds to a different signalling mechanism that can occur between cells.
+In the next code chunk, we:
 
 - Exclude the "Non-protein Signalling" category, which contains interactions that are not mediated by protein ligands and receptors.
-- We add the database to the CellChat object using the `@DB` slot.
-- We use the `subsetData()` function to subset the expression data of signalling genes.
-  This reduces the computational cost of the analysis by only keeping the genes that are relevant for the interactions in the database subset.
+- Add the filtered database to the CellChat object with the `@DB` slot.
+- Use `subsetData()` to keep only signalling genes from the database, which reduces the amount of data CellChat needs to process.
 
 ```{r}
 #| label: update-cellchat-db
@@ -263,14 +267,14 @@ cell_chat@DB <- mouse_db
 cell_chat <- subsetData(cell_chat)
 ```
 
-We now have `r nrow(cell_chat@data.signaling)` genes for cell-cell communication analysis.
+We now have `r nrow(cell_chat@data.signaling)` genes available for the CCC analysis.
 
 ### Variable Genes and Interactions
 
-Before inferring the CCC network, CellChat identifies variable genes in the dataset.
-This is effectively done as a differential expression test between the labels we set above (`first_type` in our case), similar to what we did in [cluster marker genes](04b-ClusterMarkerGenes.qmd).
-It also identifies variable ligand-receptor interactions where both pairs in an interaction are variable.
-These steps help to focus the analysis on the most relevant genes and interactions.
+Before inferring the CCC network, CellChat identifies overexpressed genes in each group.
+This is effectively a differential expression test between the labels we defined above (`first_type` here), similar to the [cluster marker genes analysis](04b-ClusterMarkerGenes.qmd) we performed earlier.
+CellChat then identifies ligand-receptor interactions where both partners are variable.
+Together, these steps focus the analysis on genes and interactions that are more likely to contribute to communication between cell populations.
 
 ```{r}
 #| label: identify-overexpressed-genes
@@ -284,9 +288,9 @@ This identifies `r length(cell_chat@var.features$features)` variable genes and `
 
 ### CCC Network Inference
 
-The final step of the analysis is to compute the communication probabilities for each ligand-receptor interaction and infer the signaling pathways involved.
+The final step is to compute communication probabilities for each ligand-receptor interaction and then infer the signalling pathways involved.
 
-We start by computing the communication probability between cell groups using the `computeCommunProb()` function.
+We start by computing the communication probability between cell groups with `computeCommunProb()`.
 
 ```{r}
 #| label: compute-communication-probabilities
@@ -302,13 +306,14 @@ cell_chat <- computeCommunProb(
 
 We set:
 
-- `contact.range = 100` to restrict contact-dependent interactions to 100 micron radius.
-  This is appropriate for 10X Visium data where the expected distance between the centers of two spots is around 100 microns.
-  For single-cell resolution technologies the recommendation is to set this to the average cell diameter.
-- `interaction.range = 200` to restrict secreted signaling interactions to 200 micron radius.
-  This might be more dependent on your expectations of the biological plausibility of medium-range interactions in your tissue than the spatial resolution of your data.
+- `contact.range = 100` to restrict contact-dependent interactions to a 100 μm radius.
+  This matches the approximate distance between the centres of two adjacent 10X Visium spots.
+  For single-cell resolution technologies, the recommendation is to use the average cell diameter instead.
+- `interaction.range = 200` to restrict secreted signalling interactions to a 200 μm radius.
+  The right value depends on the biological plausibility of medium-range interactions in the tissue as well as the spatial resolution of the data.
 
-We can also compute the communication probabilities at the signaling pathway level using the `computeCommunProbPathway()` function, which aggregates the probabilities of individual ligand-receptor interactions into pathway-level probabilities based on the known organization of interactions into pathways in the database.
+We can also compute communication probabilities at the signalling-pathway level with `computeCommunProbPathway()`.
+This function aggregates the probabilities of individual ligand-receptor interactions into pathway-level probabilities using the pathway structure in the database.
 
 ```{r}
 #| label: compute-pathway-communication-probabilities
@@ -317,8 +322,8 @@ We can also compute the communication probabilities at the signaling pathway lev
 cell_chat <- computeCommunProbPathway(cell_chat)
 ```
 
-Finally, we can filter the inferred interactions to only consider those that are supported by a minimum number of cells.
-We also aggregate the results of the computed network, which can be used in later visualisation steps.
+Finally, we filter the inferred interactions so that we only keep those supported by a minimum number of cells.
+We also aggregate the resulting network, which we use in later visualisation steps.
 
 ```{r}
 #| label: filter-communication
@@ -330,13 +335,14 @@ cell_chat <- filterCommunication(cell_chat, min.cells = 10)
 cell_chat <- aggregateNet(cell_chat)
 ```
 
-The resulting CellChat object now contains information about the identified interactions, their probabilities, and the overall communication network between different cell types in the dataset.
+The resulting CellChat object now contains the inferred interactions, their probabilities and the aggregated communication network between cell types.
 
 ## CCC Network Visualisation
 
-CellChat provides a range of functions for visualising the inferred cell-cell communication (CCC) network.
+CellChat provides several ways to inspect the inferred cell-cell communication network.
 
-We start by visualising the overall communication network using a circle plot, which shows the number of interactions and the interaction weights/strength between different cell types.
+We start with the overall communication network using a circle plot.
+This shows the number of interactions and the summed interaction strength between cell types.
 
 ```{r}
 #| label: visualise-circle
@@ -365,9 +371,10 @@ netVisual_circle(
 )
 ```
 
-The `top` option is used to show only the top 10% of interactions in the plot, but you can change this to show more or fewer interactions depending on how cluttered the plot looks.
+The `top` option keeps only the strongest 10% of interactions in the plot.
+You can increase or decrease this value depending on how cluttered the figure looks.
 
-We can also visualise the interaction strength as a heatmap:
+We can also visualise interaction strength as a heatmap:
 
 ```{r}
 #| label: visualise-heatmap
@@ -376,12 +383,12 @@ We can also visualise the interaction strength as a heatmap:
 netVisual_heatmap(cell_chat, measure = "weight")
 ```
 
-In general, we can see stronger interactions between cells of the same time (diagonal in the heatmap).
-This may not be surprising, as similar cells are located near each other in the tissue and thus are more likely to interact with each other.
+In general, the strongest interactions appear along the diagonal, where the same cell type communicates with itself.
+That is not surprising, because similar cells are often close to one another in the tissue and therefore more likely to interact.
 
-There are also some inferred interactions across cell types.
-For example, Lamp5 → Vip.
-Again, these appear as neighbouring cell types in our tissue spots, so it may follow that we see some interactions between them.
+There are also cross-type interactions.
+For example, Lamp5 → Vip appears in this dataset.
+If you want to check whether those cell types are nearby in the tissue, the next code block shows how to highlight their spatial locations.
 
 ```{r}
 #| label: spatial-plot
@@ -410,8 +417,8 @@ p2 <- SpatialDimPlot(
 p1 + p2
 ```
 
-We can also visualise the ligand-receptor interactions from one cell type to others using a bubble plot.
-For example, we can look at the interactions from Lamp5 to Vip and vice versa.
+We can also visualise ligand-receptor interactions from one cell type to another with a bubble plot.
+Here, we look at interactions from Lamp5 to Vip and from Vip to Lamp5.
 
 ```{r}
 #| label: visualise-bubble
@@ -427,16 +434,16 @@ netVisual_bubble(
 
 ## Pathway-level Visualisation
 
-We also can focus our analysis at the level of pathways, which we have already computed the communication probabilities for.
+We can also focus on pathway-level communication, which we already computed above.
 
-For example, let's focus on two specific pathways of interest: "COLLAGEN" and "LAMININ".
+For this example, we look at two pathways of interest: COLLAGEN and LAMININ.
 
-- Laminin is a key component of the extracellular matrix and plays a crucial role in cell adhesion, differentiation, migration, and signaling.
-  It is particularly important in the context of neural development and function, making it a relevant pathway to investigate in brain tissue.
-- Collagen is another major component of the extracellular matrix and is involved in providing structural support to tissues.
-  It also plays a role in cell adhesion and signaling, making it another important pathway to consider in the context of cell-cell interactions.
+- Laminin is a key component of the extracellular matrix and plays an important role in cell adhesion, differentiation, migration and signalling.
+  It is especially relevant in neural development and function, so it is a sensible pathway to inspect in brain tissue.
+- Collagen is another major extracellular matrix component.
+  It provides structural support and also contributes to cell adhesion and signalling.
 
-We can get a barplot of the contribution of each ligand-receptor interaction pair to these pathways using the `netAnalysis_contribution()` function.
+We can use `netAnalysis_contribution()` to see how much each ligand-receptor pair contributes to those pathways.
 
 ```{r}
 #| label: visualise-pathway-contribution
@@ -453,7 +460,8 @@ p1 +
   plot_annotation(title = "Contribution of ligand-receptor interaction pairs")
 ```
 
-We can compute centrality scores for selected pathways, which indicate the importance of each cell type in the communication network for those pathways.
+We can also compute centrality scores for selected pathways.
+These scores show how important each cell type is as a sender, receiver, mediator and influencer in the network.
 
 ```{r}
 #| label: visualise-pathway-centrality
@@ -471,10 +479,9 @@ netAnalysis_signalingRole_network(
 )
 ```
 
-This focuses on the importance of each cell type as sender, receiver, mediator and influencer in the network.
-For example, we can see that, for the LAMININ pathway, the L5 IT cell type is the most important receiver, while VLMC is the most important sender.
+For the LAMININ pathway in this dataset, L5 IT is the most important receiver and VLMC is the most important sender.
 
-We can get a broader picture of each cell type's role in the overall communication network by looking at the incoming vs outgoing signalling strength for all signalling roles in the network per cell type.
+We can get a broader view of each cell type's role by comparing incoming and outgoing signalling strength across all pathways.
 
 ```{r}
 #| label: visualise-signaling-roles
@@ -486,13 +493,15 @@ netAnalysis_signalingRole_scatter(cell_chat)
 netAnalysis_signalingRole_scatter(cell_chat, signaling = c("LAMININ"))
 ```
 
-In general, there is a correlation between the strenght of outgoing and incoming signalling, which makes sense as cell types that are more active in sending signals are also likely to be more active in receiving signals.
+Across all pathways, there is usually a positive relationship between outgoing and incoming signalling strength.
+That makes sense, because cell types that send many signals also tend to receive many.
 
-However, for the LAMININ pathway example specifically, we can see that the L5 IT cell type is more active in receiving signals than sending signals, while VLMC is more active in sending signals than receiving signals, which is consistent with the centrality scores we observed above.
+For the LAMININ pathway specifically, L5 IT is more active as a receiver than as a sender, while VLMC is more active as a sender than as a receiver.
+That pattern matches the centrality scores above.
 
 ## Spatial Visualisation of Pathways
 
-Finally, we can visualise specific signalling pathways of interest in spatial context using the `netVisual_aggregate()` function with the `layout = "spatial"` option.
+Finally, we can place a selected signalling pathway back into tissue context with `netVisual_aggregate()` and `layout = "spatial"`.
 
 ```{r}
 #| label: visualise-spatial-pathway
@@ -508,42 +517,42 @@ netVisual_aggregate(
 )
 ```
 
-The spatial plots visualize the selected signaling pathways in the context of the tissue.
-The nodes represent different cell types, and the edges represent the interactions between them.
-The layout is based on the spatial coordinates of the spots, allowing us to see how cell-cell interactions are distributed across the tissue.
+These spatial plots show the selected pathway in the context of the tissue.
+The nodes represent cell types, and the edges represent inferred interactions.
+Because the layout uses the spatial coordinates of the spots, you can see how communication is distributed across the tissue.
 
-There is a plethora of other visualization and investigation options available in the CellChat package.
-You can explore these options in the CellChat documentation to find the best way to visualize your specific data and research questions.
+CellChat includes many other visualisation and exploration options.
+The package documentation is the best place to look for other visualisations that fit a specific dataset or research question.
 
 ## Caveats and Limitations
 
-It is important to remember that ligand-receptor interaction networks derived from single-cell/spatial transcriptomics represent **potential communication flows, not direct measurements of signalling activity**.
-Most approaches, including CellChat, use gene expression measurements together with a curated database of known ligand-receptor interactions to identify signalling relationships that are consistent with the observed data.
+Treat ligand-receptor networks inferred from single-cell or spatial transcriptomics as **potential communication flows, not direct measurements of signalling activity**.
+Most approaches, including CellChat, combine gene expression data with a curated database of known ligand-receptor interactions to identify relationships that are consistent with the observed data.
 
-One key limitation is that **mRNA expression is only a proxy for the abundance and activity of signalling proteins**.
-Expression of a ligand does not mean that the protein is produced and secreted, while expression of a receptor does not guarantee that the signalling pathway is active.
-Many signalling processes are regulated at the post-transcriptional level (e.g. protein modifications, receptor localisation, etc.), which is not captured by transcriptomics data.
+The main limitations of this approach are:
 
-The quality of CCC results also depends heavily on the input data, in particular the **cell annotations**.
-Cell type annotations are particularly important because communication is typically inferred between cell populations.
-Incorrect annotations can obscure biologically meaningful interactions, while over-clustering may introduce artificial interactions between closely related cell states.
-Finally, **the choice of ligand-receptor database** can have a substantial impact on the interactions identified, as different databases contain different interaction sets and levels of curation.
-
-For spatial transcriptomics data, physical proximity can provide additional evidence supporting a potential interaction.
-However, spatial proximity alone does not demonstrate communication, and communication can sometimes occur over longer distances.
-Furthermore, lower-resolution technologies may contain mixtures of multiple cell types within a single spot, making it more difficult to accurately assign signalling interactions to individual cells.
-
-Finally, **CCC results should be used as hypothesis-generating** rather than definitive evidence of signalling.
-Interactions identified this way should be complemented by biological knowledge and validated in the lab, if possible.
+- **mRNA is only a proxy for signalling protein abundance and activity.** Expression of a ligand does not mean that the protein is produced and secreted, and expression of a receptor does not prove that the downstream pathway is active.
+  Many signalling steps are regulated after transcription, for example by protein modification or receptor localisation, and transcriptomics does not capture those processes.
+- **Cell annotations strongly affect the result.** Communication is usually inferred between cell populations, so incorrect annotations can hide real interactions.
+  Over-clustering can also create artificial interactions between closely related cell states.
+- **The ligand-receptor database matters.** Different databases contain different interaction sets and levels of curation, so the choice of database can change the interactions that are reported.
+- **Spatial proximity helps, but it does not prove communication.** Nearby cells provide additional support for a possible interaction, but signalling can also occur over longer distances.
+  Lower-resolution technologies may contain mixtures of cell types in a single spot, which makes it harder to assign interactions to individual cells.
+- **Use CCC results as hypotheses.** Use the results to inform follow-up experiments, not definitive evidence of signalling.
+  When possible, complement them with biological knowledge and experimental validation.
 
 ## Summary
 
 ::: {.callout-tip}
-#### Key Points
+### Key Points
 
 - Cell-cell interactions are crucial for understanding tissue microenvironments and biological processes.
-- The `CellChat` package provides a comprehensive framework for analyzing and visualizing cell-cell communication networks.
-- Preparing the Seurat object and identifying overexpressed genes and interactions are essential steps in the analysis.
-- For spatial transcriptomics data, incorporating spatial coordinates can enhance the analysis of cell-cell interactions.
-- Visualization techniques such as circle plots, heatmaps, and bar plots help interpret the results of cell-cell interaction analysis.
+- Cell-cell communication analysis uses known ligand-receptor pairs to infer likely signalling relationships between cell populations.
+  - CCC results are hypotheses, not direct measurements of signalling.
+- `CellChat` uses a Seurat object, spatial conversion factors and spot coordinates to build a spatial communication model.
+- The ligand-receptor database controls which interactions `CellChat` should consider in its analysis.
+- CellChat visualisations show different views of the same inferred network.
+  - Circle plots summarise interaction counts and weights.
+  - Heatmaps highlight cell-type pairs with stronger connections.
+  - Bubble, pathway and spatial plots help interpret specific interactions.
 :::
