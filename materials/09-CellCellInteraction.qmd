@@ -1,10 +1,20 @@
-# Cell-Cell Interactions
+# Cell-Cell Communication
 
-:::{.callout-caution}
+```{r}
+#| label: setup
+#| include: false
 
-This section is under revision
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  cache.lazy = FALSE
+)
 
-:::
+# set the working directory to the course_files folder
+# make sure to run course_files/download_course_files.sh
+knitr::opts_knit$set(root.dir = here::here("course_files"))
+```
 
 ::: {.callout-tip}
 #### Learning Objectives
@@ -15,289 +25,481 @@ This section is under revision
 - Explore different methods for visualizing cell-cell interactions
 :::
 
-## Cell-Cell Interaction Analysis
+## Setup
 
-Cell-cell interactions play a crucial role in various biological processes, including development, immune response, and disease progression.
-In spatial transcriptomics, analyzing cell-cell interactions can provide insights into how different cell types communicate and influence each other within the tissue microenvironment.
-We will be using the `CellChat` package, which provides a comprehensive framework for analyzing and visualizing cell-cell communication networks from single-cell and spatial transcriptomics data.
+We continue working with the sagittal mouse brain dataset from previous chapters.
 
-```r
-# Load necessary libraries
+::: {.callout-note collapse="true"}
+#### Click to expand
+
+Start by loading the required libraries and the Seurat object.
+
+```{r}
+#| label: load-visium-data
+
+# Load libraries
+library(Seurat) # single-cell and spatial analysis toolkit
+library(sparseMatrixStats)
+library(paletteer) # colour palettes
+library(ggplot2) # plotting
+library(dplyr) # data manipulation
+library(patchwork) # combining plots
+
+# Load the Seurat object from the previous chapter
+visium <- readRDS("precomputed/mouse_brain_visium_deconvolution.rds")
+```
+
+As a reminder, this object was created by:
+
+- Importing the raw data using `Load10X_Spatial()`, followed by QC and filtering to remove low-quality spots.
+- Data normalisation using `SCTransform()`, which models technical variation and applies variance stabilisation.
+  Stored in the "SCT" assay.
+- Applying dimensionality reduction using PCA, UMAP and t-SNE.
+- Clustering the data using graph-based clustering.
+  The clusters we use in this chapter were generated using the Leiden algorithm at a resolution of 0.8 and were set the the default cell identities (`Idents(visium)`).
+- Identifying spatially variable features using Moran's I and markvariogram methods.
+- Running the BANKSY algorithm to identify spatial domains in the data, which were stored in the `banksy_clusters` column of the metadata.
+- Using the RCTD package to perform deconvolution of the spatial transcriptomics data, using a single-cell RNA-seq reference dataset of the mouse brain.
+:::
+
+## Overview
+
+In multicellular tissues, cells communicate with one another to coordinate processes such as development, immune responses and disease progression.
+One of the most common communication mechanisms involves **signalling molecules (ligands)** produced by one cell and detected by **receptors** expressed on another cell.
+Receptor-mediated pathways can then effect gene expression, cellular behaviour and cell fate decisions.
+
+Single-cell and spatial transcriptomics allow looking at these interactions based on gene expression across thousands of cells simultaneously.
+Cell-cell communication analysis (CCC) uses **prior knowledge of ligand-receptor pairs** to identify potential signalling relationships between cell populations.
+The general idea is that cells expressing a ligand are considered potential "senders", while cells expressing the corresponding receptor are considered potential "receivers".
+This can be used to build an interaction network for generating hypotheses of how information flows through a tissue.
+
+It is important to emphasise that **CCC methods rely on curated databases of known ligand-receptor interactions**.
+Rather than discovering entirely new signalling relationships, these methods use observed gene expression patterns to identify which known interactions are most likely to occur between cell populations.
+
+Spatial transcriptomics provides additional information beyond single-cell transcriptomics by preserving the physical location of cells within a tissue, allowing inferred interactions to be evaluated in the context of spatial proximity.
+This is useful as many signalling mechanisms occur locally and are therefore more plausible when sender and receiver cells are located near one another.
+This means that we can explore how cell types communicate and influence each other within the tissue microenvironment.
+
+Many packages have been developed for analysing cell-cell communication (CCC) from single-cell and spatial transcriptomics data.
+As is the case with many spatial analysis workflows, this is an active area of development, and we encourage you to regularly look for benchmark studies comparing current tools.
+For example, [Ku et al. 2026](https://doi.org/10.1186/s13059-026-04063-5) benchmarked a range of spatially-aware and non-spatial CCC inference methods across multiple spatial transcriptomics technologies.
+
+One of their main conclusions is that there is no universally best method for CCC inference across all spatial technologies.
+Performance depends on factors such as spatial resolution, cell type composition and the underlying assumptions of the method.
+In general, methods originally developed for single-cell data perform well on high-resolution spatial datasets, while spatially-aware methods can give complementary information for lower-resolution technologies.
+
+We discuss more caveats and limitations of these methods at the end of this chapter.
+For now, we will demonstrate how to perform CCC using a popular package developed for single-cell CCC inference: `CellChat`.
+Note that the benchmark study above uses CellChat v2 (which we are also using here), but [v3 is under development](https://github.com/jinworks/SpatialCellChat) and provides further functionality for spatial data.
+This emphasises the speed of development in the field, and why regularly looking for benchmark studies is important.
+
+::: {.callout-tip}
+#### Acronyms used in this chapter
+
+Throughout this chapter we use the term **cell-cell communication (CCC)** to describe signalling relationships inferred from ligand-receptor expression patterns.
+The literature also frequently uses the term **cell-cell interaction (CCI)**, and the two terms are often used interchangeably in the context of transcriptomics-based analyses.
+:::
+
+## CellChat Analysis
+
+*CellChat* is an R package for inference of cell-cell communication (CCC) networks from single-cell and spatial transcriptomics data.
+It combines gene expression measurements with a curated database of ligand-receptor interactions to estimate the probability of communication between cell populations.
+It also accounts for multi-subunit receptor complexes, cofactors and pathway-level organisation, which improves its performance compared to methods that only use ligand-receptor pairs.
+
+These are the steps required for the analysis:
+
+- Create the CellChat object
+- Set the ligand-receptor interaction database
+- Idenfity overexpressed genes and interactions
+- Compute communication probabilities and infer signaling pathways
+- Visualise and explore the results
+
+We will go through each of these steps in detail.
+First, let's load the library:
+
+```{r}
+#| label: load-cellchat
+
+# Load CellChat library
 library(CellChat)
 ```
 
-## Prepare Seurat Data for CellChat
+### Create CellChat Object
 
-First, we need to prepare our Seurat object for CellChat analysis.
-This involves extracting the expression data and metadata from the Seurat object.
+The CellChat object can be created directly from a Seurat object using the `createCellChat()` function.
 
-```r
-data.input <- visium[["SCT"]]$data
-Idents(visium) <- "first_type"
-labels <- Idents(visium) #expects the cell labels to be in the identities of the Seurat object
-meta <- data.frame(labels = labels, row.names = names(labels))
+Besides the Seurat object, this function requires a data frame of **spatial conversion factors** with two columns:
+
+- **`ratio`**: the conversion factor for converting spatial coordinates from pixels to microns.
+  For example a ratio of 0.1 would mean that 1 pixel = 0.1 μm.
+- **`tol`**: a tolerance factor to allow flexibility when calculating interaction ranges between cells.
+  The authors recommend setting this to half the spot diameter in microns.
+
+The `ratio` factor can be calculated based on the spatial resolution of the data, as the ratio of the spot diameter in microns to the spot diameter in pixels.
+The spot diameter in pixels is available as image metadata (remember you can list images in the Seurat object with `Images()`).
+
+```{r}
+#| label: view-scale-factors
+
+# View scale factors for the image in the Seurat object
+ScaleFactors(visium[["slice1"]])
 ```
 
-To use spatial information in the analysis, we can add the spatial coordinates of each spot to the metadata.
-This step is optional but can provide additional context for interpreting cell-cell interactions.
-For 10X Visium, this information is in the 'tissue_positions.csv' file found in the 'spatial' directory, the data stored in the Seurat object is not appropriate for CellChat.
-We will therefore read in the file directly save the coordinates in a dataframe.
+The `spot` entry is what we're interesting in, and gives the number of pixels corresponding to the spot diameter (55 μm for 10X Visium v1/v2).
 
-```r
-spatial_locs = GetTissueCoordinates(visium, scale = NULL)[, c("x", "y")]
-```
-Additionally we need the conversion factor from pixel coordinates to microns.
-This can be computed as the ratio of the spot diameter in microns (55 microns for 10X Visium) to the spot diameter in pixels (20 pixels for 10X Visium).
-We need to read the spot diameter in pixels from the 'scalefactors_json.json' file found in the 'spatial' directory.
+We can therefore create our spatial factors data frame as follows:
 
-```r
-scalefactors = jsonlite::fromJSON(
-  txt = file.path("data/mouse_sagittal/spatial", 'scalefactors_json.json')
+```{r}
+#| label: create-spatial-factors
+
+# Create spatial factors data frame
+spatial_factors <- data.frame(
+  ratio = 55 / ScaleFactors(visium[["slice1"]])$spot,
+  tol = 55 / 2
 )
-spotsize = 65 # the theoretical spot size (um) in 10X Visium
-conversion_factor = spotsize / scalefactors$spot_diameter_fullres
-spatial_factors = data.frame(ratio = conversion_factor, tol = spotsize / 2)
+
+spatial_factors
 ```
 
-Now we can check the distances of the spots to each other, which will be used in the CellChat analysis.
-For 10X Visium v1 data it should be roughly 100 microns between the centers of two spots.
+We also need a separate data frame with the spatial coordinates of each spot, which can be extracted from the Seurat object using the `GetTissueCoordinates()` function.
 
-```r
-#check distances of the spots to each other
-dist <- computeCellDistance(
-  coordinates = spatial_locs,
+```{r}
+#| label: extract-spatial-coordinates
+
+# Extract tissue coordinates of the spots
+spatial_coords <- GetTissueCoordinates(visium, image = "slice1")[, c("x", "y")]
+
+head(spatial_coords)
+```
+
+Before creating the CellChat object, we can check the distances of the spots to each other, which will be used in the CellChat analysis.
+We know that for 10X Visium v1 the minimum distance should be roughly 100 μm between the centers of adjacent spots, so this is a good check that our spatial factors are correct.
+
+```{r}
+#| label: check-spot-distances
+
+# compute distances of the spots to each other
+spot_dists <- computeCellDistance(
+  coordinates = spatial_coords,
   ratio = spatial_factors$ratio,
   tol = spatial_factors$tol
 )
-min(dist[dist != 0])
+
+# minimum distance observed
+# remove zero distances (distance of a spot to itself)
+min(spot_dists[spot_dists != 0])
 ```
 
-## Create CellChat Object & Set the ligand-receptor database
+This value is smaller than the 100 μm, but still within a reasonable range.
 
-Next, we create a CellChat object using the expression data and metadata as well as the spatial coordinates we have just prepared.
+With our scale factors and spatial coordinates prepared, we can now create the CellChat object using the `createCellChat()` function.
 
-```r
-cellchat <- createCellChat(
-  object = data.input,
-  meta = meta,
-  group.by = "labels",
+```{r}
+#| label: create-cellchat
+
+# Create CellChat object
+cell_chat <- createCellChat(
+  object = visium,
+  assay = "SCT",
+  group.by = "first_type",
   datatype = "spatial",
-  coordinates = spatial_locs,
+  coordinates = spatial_coords,
   spatial.factors = spatial_factors
 )
+
+# drop levels of cell type labels that are not present in the data
+cell_chat@idents <- droplevels(cell_chat@idents)
 ```
 
-Then we load and set the ligand-receptor interaction database.
-CellChat provides several built-in databases, and we will use the mouse database for this example.
-We are excluding the "Non-protein Signaling" category for our analysis, which is a standard subset of interactions to consider.
-We will also remove unused expression data from the CellChat object to speed up the analysis, matching the selected database subset.
+A few of the critical options we used include:
 
-```r
-CellChatDB <- CellChatDB.mouse
-showDatabaseCategory(CellChatDB)
+- `assay = "SCT"`: CellChat requires log-normalised expression data.
+  We use the log-normalised data from the sctransform method ("SCT" assay).
+  You could also specify `assay = "Spatial"` if you wanted to use the log-normalised data from the `LogNormalize` method, which is stored in that assay.
+- `datatype = "spatial"`: this tells CellChat that we are working with spatial transcriptomics data, which allows it to use the spatial coordinates and factors in the analysis.
+- `group.by = "first_type"`: this specifies the metadata column to use for cell type labels.
+  We used the first cell type label from our deconvolution results (`first_type` column in the metadata).
+  However, you could choose to use a different label, for example the `banksy_cluster` or the `Leiden_08` metadata columns from our spatial and non-spatial clustering analysis, respectively.
+- We also provided the spatial coordinates and factors we prepared in the previous steps.
 
-# use all CellChatDB except for "Non-protein Signaling" for cell-cell communication analysis
-CellChatDB.use <- subsetDB(CellChatDB)
+### Ligand-receptor database
 
-# set the used database in the object
-cellchat@DB <- CellChatDB.use
+One critical aspect of CCC analysis is the choice of ligand-receptor interaction database.
+CellChat provides three built-in databases: `CellChatDB.mouse`, `CellChatDB.human` and `CellChatDB.zebrafish`.
+For custom databases, you can use `updateCellChatDB()`, providing your own ligand-receptor interaction pairs (see the function's help for details).
+
+Here, we use the mouse database, which contains `r nrow(CellChatDB.mouse$interaction)` ligand-receptor interactions.
+We can quickly visualise the categories of ligand-receptor interactions available in this database:
+
+```{r}
+#| label: visualise-cellchat-db
+
+# Visualise categories of interactions in the mouse database
+showDatabaseCategory(CellChatDB.mouse)
+```
+
+Each category represents a different type of signaling mechanism that can occur between cells.
+In the following code chunk, we will:
+
+- Exclude the "Non-protein Signalling" category, which contains interactions that are not mediated by protein ligands and receptors.
+- We add the database to the CellChat object using the `@DB` slot.
+- We use the `subsetData()` function to subset the expression data of signalling genes.
+  This reduces the computational cost of the analysis by only keeping the genes that are relevant for the interactions in the database subset.
+
+```{r}
+#| label: update-cellchat-db
+
+# Subset database to exclude "Non-protein Signalling"
+mouse_db <- subsetDB(
+  CellChatDB.mouse,
+  search = c("Secreted Signaling", "ECM-Receptor", "Cell-Cell Contact"),
+  non_protein = FALSE
+)
+
+# add the database to the CellChat object
+cell_chat@DB <- mouse_db
 
 # subset the expression data of signaling genes for saving computation cost
-cellchat <- subsetData(cellchat)
+cell_chat <- subsetData(cell_chat)
 ```
 
-::: {.callout-tip collapse="true"}
-#### Result
+We now have `r nrow(cell_chat@data.signaling)` genes for cell-cell communication analysis.
 
-![CellChat Database Summary](graphs/chat_db.png)
+### Variable Genes and Interactions
 
-These are the categories of ligand-receptor interactions available in the CellChat mouse database.
-Each category represents a different type of signaling mechanism that can occur between cells.
-:::
+Before inferring the CCC network, CellChat identifies variable genes in the dataset.
+This is effectively done as a differential expression test between the labels we set above (`first_type` in our case), similar to what we did in [cluster marker genes](04b-ClusterMarkerGenes.qmd).
+It also identifies variable ligand-receptor interactions where both pairs in an interaction are variable.
+These steps help to focus the analysis on the most relevant genes and interactions.
 
-## Identify Overexpressed Genes and Interactions
+```{r}
+#| label: identify-overexpressed-genes
 
-We will identify overexpressed genes and interactions in the dataset.
-This step helps to focus the analysis on the most relevant genes and interactions.
-CellChat offers parallel processing, but this often actually causes more issues than speedup, so we will not be using it.
-To compute the communication probability at the signaling gene level, we will use the "triMean" method, which is a robust method for estimating communication probabilities.
-We need to set the 'contact.range' parameter to define the maximum distance for considering cell-cell interactions.
-Here, we set it to 100 microns, which is the expected distance between the centers of two spots in 10X Visium data.
-We will also filter the interactions to only consider those that are supported by at least 10 cells.
-
-```r
 # Identify overexpressed genes and interactions
-cellchat <- identifyOverExpressedGenes(cellchat)
-cellchat <- identifyOverExpressedInteractions(cellchat)
-
-#The following function computes the communication probability at the signaling pathway level
-#If it takes a long time to compute, so you can skip it and load precomputed results instead
-cellchat <- computeCommunProb(
-  cellchat,
-  type = "triMean",
-  contact.range = 100,
-  trim = 0.1
-)
-cellchat <- computeCommunProbPathway(cellchat)
-
-cellchat <- filterCommunication(cellchat, min.cells = 10) #only consider interactions that are supported by at least 10 cells
-cellchat <- aggregateNet(cellchat)
-
-# cellchat <- loadRDS("precomputed/mouse_brain_cellchat.rds") #load precomputed results
+cell_chat <- identifyOverExpressedGenes(cell_chat)
+cell_chat <- identifyOverExpressedInteractions(cell_chat)
 ```
 
-::: {.callout-tip collapse="true"}
-#### Result
+This identifies `r length(cell_chat@var.features$features)` variable genes and `r nrow(cell_chat@LR$LRsig)` variable ligand-receptor interactions.
 
-The number of highly variable ligand-receptor pairs (output of the `identifyOverExpressedInteractions` function) identified for this dataset is 1467.
+### CCC Network Inference
 
-We have now computed the cell-cell communication probabilities and aggregated the communication network at the cell type level.
-The resulting CellChat object contains information about the identified interactions, their probabilities, and the overall communication network between different cell types in the dataset.
-:::
+The final step of the analysis is to compute the communication probabilities for each ligand-receptor interaction and infer the signaling pathways involved.
 
-## Visualize Cell-Cell Communication Network
+We start by computing the communication probability between cell groups using the `computeCommunProb()` function.
 
-Finally, we can visualize the cell-cell communication network using various plotting functions provided by the CellChat package.
-We will create a circle plot to visualize the overall communication network and a heatmap to show the interaction strength between different cell types as well as a bar plot ranking the signaling pathways by their acttivity scores.
-We will both choose to visualise two specific pathways of interest: "COLLAGEN" and "LAMININ" together, as well as "LAMININ" alone.
+```{r}
+#| label: compute-communication-probabilities
+#| cache: true
 
-Laminin is a key component of the extracellular matrix and plays a crucial role in cell adhesion, differentiation, migration, and signaling.
-It is particularly important in the context of neural development and function, making it a relevant pathway to investigate in brain tissue.
+# Compute communication probabilities
+cell_chat <- computeCommunProb(
+  cell_chat,
+  contact.range = 100,
+  interaction.range = 200
+)
+```
 
-Collagen is another major component of the extracellular matrix and is involved in providing structural support to tissues.
-It also plays a role in cell adhesion and signaling, making it another important pathway to consider in the context of cell-cell interactions.
+We set:
 
-```r
-#find all significant signalling pathways
-pathways.show.all <- cellchat@netP$pathways
-pathways.selected <- c("COLLAGEN", "LAMININ")
-laminin <- c("LAMININ")
+- `contact.range = 100` to restrict contact-dependent interactions to 100 micron radius.
+  This is appropriate for 10X Visium data where the expected distance between the centers of two spots is around 100 microns.
+  For single-cell resolution technologies the recommendation is to set this to the average cell diameter.
+- `interaction.range = 200` to restrict secreted signaling interactions to 200 micron radius.
+  This might be more dependent on your expectations of the biological plausibility of medium-range interactions in your tissue than the spatial resolution of your data.
 
-# Circle plos of the overall communication network
-groupSize <- as.numeric(table(cellchat@idents))
+We can also compute the communication probabilities at the signaling pathway level using the `computeCommunProbPathway()` function, which aggregates the probabilities of individual ligand-receptor interactions into pathway-level probabilities based on the known organization of interactions into pathways in the database.
+
+```{r}
+#| label: compute-pathway-communication-probabilities
+
+# Compute communication probabilities at the signaling pathway level
+cell_chat <- computeCommunProbPathway(cell_chat)
+```
+
+Finally, we can filter the inferred interactions to only consider those that are supported by a minimum number of cells.
+We also aggregate the results of the computed network, which can be used in later visualisation steps.
+
+```{r}
+#| label: filter-communication
+
+# Filter interactions to only consider those supported by at least 10 spots
+cell_chat <- filterCommunication(cell_chat, min.cells = 10)
+
+# Aggregate the communication network at the cell type level
+cell_chat <- aggregateNet(cell_chat)
+```
+
+The resulting CellChat object now contains information about the identified interactions, their probabilities, and the overall communication network between different cell types in the dataset.
+
+## CCC Network Visualisation
+
+CellChat provides a range of functions for visualising the inferred cell-cell communication (CCC) network.
+
+We start by visualising the overall communication network using a circle plot, which shows the number of interactions and the interaction weights/strength between different cell types.
+
+```{r}
+#| label: visualise-circle
+
+# calculate number of cells of each type for scaling the node sizes in the plot
+group_size <- as.numeric(table(cell_chat@idents))
+
+# Visualise the overall communication network as a circle plot
 netVisual_circle(
-  cellchat@net$count,
-  vertex.weight = groupSize,
+  cell_chat@net$count,
+  vertex.weight = group_size,
   weight.scale = TRUE,
   label.edge = FALSE,
   title.name = "Number of interactions",
-  top = 0.3
+  top = 0.1
 )
+
+# Visualise the weights of the interactions
 netVisual_circle(
-  cellchat@net$weight,
-  vertex.weight = groupSize,
+  cell_chat@net$weight,
+  vertex.weight = group_size,
   weight.scale = TRUE,
   label.edge = FALSE,
   title.name = "Interaction weights/strength",
-  top = 0.3
+  top = 0.1
 )
 ```
 
-::: {.callout-tip collapse="true"}
-#### Result
+The `top` option is used to show only the top 10% of interactions in the plot, but you can change this to show more or fewer interactions depending on how cluttered the plot looks.
 
-The first circle plot shows the number of interactions between different cell types, while the second plot shows the interaction weights or strengths.
-The size of each node represents the number of cells in that cell type, and the thickness of the edges represents the strength of the interactions between cell types.
+We can also visualise the interaction strength as a heatmap:
 
-![CellChat Circle Plot of the Number of Interactions](graphs/chat_num.png)
+```{r}
+#| label: visualise-heatmap
 
-![CellChat Circle Plot of the Interaction weights representing potential interaction strength](graphs/chat_weight.png)
-:::
-
-```r
-# Heatmap of interaction strength between cell types
-netVisual_heatmap(cellchat, measure = "weight")
+# Visualise the interaction strength between cell types as a heatmap
+netVisual_heatmap(cell_chat, measure = "weight")
 ```
-::: {.callout-tip collapse="true"}
-#### Result
 
-The heatmap visualizes the interaction strength between different cell types.
-The color intensity represents the strength of the interactions, with darker colors indicating stronger interactions.
-This heatmap provides a comprehensive overview of the communication network, allowing us to identify which cell types are more actively communicating with each other.\
+In general, we can see stronger interactions between cells of the same time (diagonal in the heatmap).
+This may not be surprising, as similar cells are located near each other in the tissue and thus are more likely to interact with each other.
 
-![CellChat Heatmap of Interaction Strength between Cell Types](graphs/chat_heat.png)
-:::
+There are also some inferred interactions across cell types.
+For example, Lamp5 → Vip.
+Again, these appear as neighbouring cell types in our tissue spots, so it may follow that we see some interactions between them.
 
-```r
-#Bar plot of the contribution of each ligand-receptor interaction pair to the selected pathways
-netAnalysis_contribution(cellchat, signaling = pathways.selected)
-netAnalysis_contribution(cellchat, signaling = laminin)
+```{r}
+#| label: spatial-plot
+#| eval: false
+#| code-fold: true
+#| code-summary: "Code for highlighting spatial locations of Lamp5 and Vip spots"
+#| purl: false
+
+# Highlight Lamp5 and Vip in side-by-side spatial plots
+p1 <- SpatialDimPlot(
+  visium,
+  cells.highlight = WhichCells(visium, expression = first_type == "Lamp5"),
+  image.alpha = 0.5
+) +
+  ggtitle("Lamp5 spot locations") +
+  theme(legend.position = "none")
+
+p2 <- SpatialDimPlot(
+  visium,
+  cells.highlight = WhichCells(visium, expression = first_type == "Vip"),
+  image.alpha = 0.5
+) +
+  ggtitle("Vip spot locations") +
+  theme(legend.position = "none")
+
+p1 + p2
 ```
-::: {.callout-tip collapse="true"}
-#### Result
 
-The bar plots show the contribution of each ligand-receptor interaction pair to the selected pathways.
-The height of each bar represents the contribution score, which indicates how much each interaction pair contributes to the overall signaling activity of the pathway.
-This visualization helps to identify the key ligand-receptor pairs that are driving the signaling activity in the selected pathways.
+We can also visualise the ligand-receptor interactions from one cell type to others using a bubble plot.
+For example, we can look at the interactions from Lamp5 to Vip and vice versa.
 
-![CellChat Bar Plot of Contribution of Ligand-Receptor Interaction Pairs to the COLLAGEN and LAMININ Pathways](graphs/chat_contr_both.png)
+```{r}
+#| label: visualise-bubble
+#| fig-height: 12
 
-![CellChat Bar Plot of Contribution of Ligand-Receptor Interaction Pairs of only the LAMININ Pathway](graphs/chat_contr_laminin.png)
-:::
-
-```r
-# Bubble Plot of ligand-receptor interactions from one celltype (the 1st, L2/3 IT) to other celltypes (the 3rd to 5th)
+# Bubble plot of ligand-receptor interactions from Lamp5 to Vip and vice versa
 netVisual_bubble(
-  cellchat,
-  sources.use = 1,
-  targets.use = c(3:5),
-  remove.isolate = FALSE
+  cell_chat,
+  sources.use = c("Lamp5", "Vip"),
+  targets.use = c("Lamp5", "Vip")
 )
 ```
-::: {.callout-tip collapse="true"}
-#### Result
 
-The bubble plot visualizes the ligand-receptor interactions from one cell type (L2/3 IT) to other cell types (the 3rd to 5th).
-Each bubble represents a ligand-receptor pair, with the size of the bubble indicating the strength of the interaction.
-This plot allows us to see how a specific cell type communicates with other cell types in the tissue.
+## Pathway-level Visualisation
 
-![CellChat Bubble Plot of Ligand-Receptor Interactions from L2/3 IT to other Cell Types](graphs/chat_bubble.png)
-:::
+We also can focus our analysis at the level of pathways, which we have already computed the communication probabilities for.
 
-```r
-#Centrality scores of the selected pathways
-cellchat <- netAnalysis_computeCentrality(cellchat, slot.name = "netP")
+For example, let's focus on two specific pathways of interest: "COLLAGEN" and "LAMININ".
+
+- Laminin is a key component of the extracellular matrix and plays a crucial role in cell adhesion, differentiation, migration, and signaling.
+  It is particularly important in the context of neural development and function, making it a relevant pathway to investigate in brain tissue.
+- Collagen is another major component of the extracellular matrix and is involved in providing structural support to tissues.
+  It also plays a role in cell adhesion and signaling, making it another important pathway to consider in the context of cell-cell interactions.
+
+We can get a barplot of the contribution of each ligand-receptor interaction pair to these pathways using the `netAnalysis_contribution()` function.
+
+```{r}
+#| label: visualise-pathway-contribution
+
+# barplot of the contribution of each ligand-receptor interaction pair to the selected pathways
+p1 <- netAnalysis_contribution(cell_chat, signaling = "COLLAGEN") +
+  ggtitle("COLLAGEN pathway")
+
+p2 <- netAnalysis_contribution(cell_chat, signaling = "LAMININ") +
+  ggtitle("LAMININ pathway")
+
+p1 +
+  p2 +
+  plot_annotation(title = "Contribution of ligand-receptor interaction pairs")
+```
+
+We can compute centrality scores for selected pathways, which indicate the importance of each cell type in the communication network for those pathways.
+
+```{r}
+#| label: visualise-pathway-centrality
+#| fig-height: 4
+
+# compute centrality scores for the selected pathways
+cell_chat <- netAnalysis_computeCentrality(cell_chat)
+
+# visualise the centrality scores for a selected pathway
 netAnalysis_signalingRole_network(
-  cellchat,
-  signaling = pathways.selected,
-  width = 10,
-  height = 4
+  cell_chat,
+  signaling = "LAMININ",
+  width = 16,
+  height = 8
 )
-
-# Incoming vs outgoing signalling strength for all signalling roles in the network per celltype for all pathways and separately for the laminin pathway
-netAnalysis_signalingRole_scatter(cellchat)
-netAnalysis_signalingRole_scatter(cellchat, signaling = c("LAMININ"))
 ```
 
-::: {.callout-tip collapse="true"}
-#### Result
+This focuses on the importance of each cell type as sender, receiver, mediator and influencer in the network.
+For example, we can see that, for the LAMININ pathway, the L5 IT cell type is the most important receiver, while VLMC is the most important sender.
 
-The first plot shows the centrality scores of the selected pathways, indicating the importance of each cell type in the communication network.
-![CellChat Centrality Scores of the COLLAGEN and LAMININ Pathways](graphs/chat_sigRole.png)
+We can get a broader picture of each cell type's role in the overall communication network by looking at the incoming vs outgoing signalling strength for all signalling roles in the network per cell type.
 
-The second and third plots show the incoming vs outgoing signaling strength for all signaling roles in the network per cell type for all pathways and separately for the laminin pathway.
-These scatter plots help to identify which cell types are primarily sending or receiving signals in the network.
+```{r}
+#| label: visualise-signaling-roles
 
-![CellChat Incoming vs Outgoing Signaling Strength for All Signaling Roles](graphs/chat_sigRole_scatter.png)
+# All pathways
+netAnalysis_signalingRole_scatter(cell_chat)
 
-![CellChat Incoming vs Outgoing Signaling Strength for the LAMININ Pathway](graphs/chat_sigRole_laminin.png)
-:::
+# Only the LAMININ pathway
+netAnalysis_signalingRole_scatter(cell_chat, signaling = c("LAMININ"))
+```
 
-Of course, we can also visualize specific signaling pathways of interest in spatial context.
+In general, there is a correlation between the strenght of outgoing and incoming signalling, which makes sense as cell types that are more active in sending signals are also likely to be more active in receiving signals.
 
-```r
+However, for the LAMININ pathway example specifically, we can see that the L5 IT cell type is more active in receiving signals than sending signals, while VLMC is more active in sending signals than receiving signals, which is consistent with the centrality scores we observed above.
+
+## Spatial Visualisation of Pathways
+
+Finally, we can visualise specific signalling pathways of interest in spatial context using the `netVisual_aggregate()` function with the `layout = "spatial"` option.
+
+```{r}
+#| label: visualise-spatial-pathway
+
 netVisual_aggregate(
-  cellchat,
-  signaling = pathways.selected,
-  layout = "spatial",
-  edge.width.max = 2,
-  vertex.size.max = 1,
-  alpha.image = 0.2,
-  vertex.label.cex = 3.5
-)
-netVisual_aggregate(
-  cellchat,
-  signaling = laminin,
+  cell_chat,
+  signaling = "LAMININ",
   layout = "spatial",
   edge.width.max = 2,
   vertex.size.max = 1,
@@ -305,29 +507,37 @@ netVisual_aggregate(
   vertex.label.cex = 3.5
 )
 ```
-
-::: {.callout-tip collapse="true"}
-#### Result
 
 The spatial plots visualize the selected signaling pathways in the context of the tissue.
 The nodes represent different cell types, and the edges represent the interactions between them.
 The layout is based on the spatial coordinates of the spots, allowing us to see how cell-cell interactions are distributed across the tissue.
 
-![CellChat Spatial Plot of the COLLAGEN and LAMININ Pathways](graphs/chat_spatial1.png)
-
-![CellChat Spatial Plot of the LAMININ Pathway](graphs/chat_spatial_laminin.png)
-:::
-
 There is a plethora of other visualization and investigation options available in the CellChat package.
 You can explore these options in the CellChat documentation to find the best way to visualize your specific data and research questions.
 
-## Conclusion
+## Caveats and Limitations
 
-In this section, we have explored how to analyze cell-cell interactions using the CellChat package in R.
-We prepared the Seurat object for CellChat analysis, identified overexpressed genes and interactions, and visualized the cell-cell communication network.
-Understanding cell-cell interactions can provide valuable insights into tissue architecture and function, helping to unravel complex biological processes.
+It is important to remember that ligand-receptor interaction networks derived from single-cell/spatial transcriptomics represent **potential communication flows, not direct measurements of signalling activity**.
+Most approaches, including CellChat, use gene expression measurements together with a curated database of known ligand-receptor interactions to identify signalling relationships that are consistent with the observed data.
+
+One key limitation is that **mRNA expression is only a proxy for the abundance and activity of signalling proteins**.
+Expression of a ligand does not mean that the protein is produced and secreted, while expression of a receptor does not guarantee that the signalling pathway is active.
+Many signalling processes are regulated at the post-transcriptional level (e.g. protein modifications, receptor localisation, etc.), which is not captured by transcriptomics data.
+
+The quality of CCC results also depends heavily on the input data, in particular the **cell annotations**.
+Cell type annotations are particularly important because communication is typically inferred between cell populations.
+Incorrect annotations can obscure biologically meaningful interactions, while over-clustering may introduce artificial interactions between closely related cell states.
+Finally, **the choice of ligand-receptor database** can have a substantial impact on the interactions identified, as different databases contain different interaction sets and levels of curation.
+
+For spatial transcriptomics data, physical proximity can provide additional evidence supporting a potential interaction.
+However, spatial proximity alone does not demonstrate communication, and communication can sometimes occur over longer distances.
+Furthermore, lower-resolution technologies may contain mixtures of multiple cell types within a single spot, making it more difficult to accurately assign signalling interactions to individual cells.
+
+Finally, **CCC results should be used as hypothesis-generating** rather than definitive evidence of signalling.
+Interactions identified this way should be complemented by biological knowledge and validated in the lab, if possible.
 
 ## Summary
+
 ::: {.callout-tip}
 #### Key Points
 
