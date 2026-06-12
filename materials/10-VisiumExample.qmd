@@ -1,16 +1,34 @@
 # Visium HD: Zebrafish Head
 
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  cache.lazy = FALSE,
+  eval = FALSE
+)
+
+# set the working directory to the course_files folder
+# make sure to run course_files/download_course_files.sh
+knitr::opts_knit$set(root.dir = here::here("course_files"))
+```
+
+
 ::: {.callout-tip}
 #### Learning Objectives
 
 - Load a Visium data set into Seurat
-- Preprocess the data (normalization, scaling, quality control)
-- Perform clustering and visualize results
+- Preprocess the data (normalisation, scaling, quality control)
+- Perform clustering and visualise results
 - Identify marker genes for clusters
 - Run BANKSY analysis
-- Visualize BANKSY results
+- visualise BANKSY results
 - Identify spatially variable features
-- Visualize spatially variable features on spatial maps
+- Visualise spatially variable features on spatial maps
 :::
 
 ## Loading Visium Data into Seurat
@@ -23,21 +41,26 @@ Please note that this is still experimental and may not work for all datasets.
 We need to load additional libraries to handle this type of data.
 We are going to use a dataset from 10x Genomics, which can be found [here](https://www.10xgenomics.com/resources/datasets/zebrafish-head-3-1-standard-3-0-0).
 This is a Visium HD 3' dataset of a zebrafish head section.
-It comes with pre-segmented data, which we will use int this case to avoid using binned data and having to deconvolute it.
+It comes with pre-segmented data, which we will use in this case to avoid using binned data and having to deconvolute it.
 Please make sure the relevant directories have been unzipped.
 Make sure that both the `binned_outputs` and `spatial` directories are uncompressed as well as the `segmented_outputs` directory for pre-segmented high-resolution data.
 To keep our dataset small enough to run on a standard laptop, we will only load the segmented polygons data.
 
-```r
+```{r}
+#| label: load-data
+
+# Load libraries
 library(Seurat)
 library(ggplot2)
 library(patchwork)
-libra(dplyr)
+library(dplyr)
 library(Matrix)
 library(SeuratWrappers)
 library(Banksy)
+
+# Load the Visium HD 3' dataset with pre-segmented polygons
 v3d <- Load10X_Spatial(
-  data.dir = "data/zebrafish_head",
+  data.dir = "data/zebrafish_head_visium_hd/",
   slice = "slice1",
   bin.size = c("polygons")
 )
@@ -49,25 +72,29 @@ After loading the data, we can perform some basic quality control (QC) to filter
 We will calculate the percentage of mitochondrial genes and filter out spots with high mitochondrial content, as well as spots with very low total counts.
 because we are working with polygons, we will use the `nCount_Spatial.Polygons` metadata field instead of `nCount_Spatial` and we are adjusting the filtering thresholds accordingly as well.
 
-```r
+```{r}
+#| label: qc
+
 # Calculate percentage of mitochondrial genes
 v3d[["percent.mt"]] <- PercentageFeatureSet(v3d, pattern = "^mt-")
-# Visualize QC metrics
+# visualise QC metrics
 VlnPlot(v3d, features = c("nCount_Spatial.Polygons", "percent.mt"), ncol = 2)
 # Remove low-quality cells and check the difference in metrics
 v3d <- subset(v3d, subset = nCount_Spatial.Polygons > 5 & percent.mt < 10)
-# Visualize QC metrics again to check improvement
+# visualise QC metrics again to check improvement
 VlnPlot(v3d, features = c("nCount_Spatial.Polygons", "percent.mt"), ncol = 2)
 ```
 
-## Normalization and Scaling
+## Normalisation and Scaling
 
-Next, we will normalize and scale the data using the `SCTransform` function.
-This function performs normalization and variance stabilization.
-We are also reducing the number of cells used for normalization to speed up the process and reduce memory requirements and adding a parameter to conserve memory.
+Next, we will normalise and scale the data using the `SCTransform` function.
+This function performs normalisation and variance stabilisation.
+We are also reducing the number of cells used for normalisation to speed up the process and reduce memory requirements and adding a parameter to conserve memory.
 
-```r
-# Perform SCTransform normalization. This is going to take a few minutes, feel free to get a coffee.
+```{r}
+#| label: normalisation
+
+# Perform SCTransform normalisation. This is going to take a few minutes, feel free to get a coffee.
 v3d <- SCTransform(
   v3d,
   assay = "Spatial.Polygons",
@@ -76,16 +103,19 @@ v3d <- SCTransform(
   variable.features.n = 1000,
   ncells = 2000
 )
-# Set the default assay to the newly created Polygon assay
-DefaultAssay(v3d) <- "Polygon"
+
+# Check default assay is the new one
+DefaultAssay(v3d)
 ```
 
 ## Dimensionality Reduction and Clustering
 
-After normalization, we can perform dimensionality reduction using PCA and then cluster the spots using the Leiden algorithm.
-We will visualize the clusters using UMAP.
+After normalisation, we can perform dimensionality reduction using PCA and then cluster the spots using the Leiden algorithm.
+We will visualise the clusters using UMAP.
 
-```r
+```{r}
+#| label: clustering
+
 # Perform PCA
 v3d <- RunPCA(v3d, assay = "Polygon", verbose = FALSE)
 v3d <- RunUMAP(v3d, dims = 1:30)
@@ -96,7 +126,8 @@ v3d <- FindClusters(
   resolution = 0.3,
   cluster.name = "leidenClusters_03"
 )
-# Visualize UMAP with clusters
+
+# visualise UMAP with clusters
 DimPlot(v3d, reduction = "umap", group.by = "leidenClusters_03", label = TRUE) +
   ggtitle("Leiden Clusters (res=0.3)")
 SpatialDimPlot(v3d, group.by = "leidenClusters_03", label = TRUE) +
@@ -110,7 +141,9 @@ We can do this by subsetting using an interactive plot.
 Please try selecting the innermost part of the eye - including the lens and one of the surrounding circular tissue layers.
 Unfortunately a larger selection might make it impossible for you to run the detection of spatially variable features later on in a reasonable timeframe.
 
-```r
+```{r}
+#| label: subsetting
+
 subset <- InteractiveSpatialPlot(v3d)
 
 #Subset the object to only include the eye region
@@ -126,7 +159,9 @@ SpatialFeaturePlot(
 
 This data now has to be preprocessed again after subsetting.
 
-```r
+```{r}
+#| label: preprocess-subset
+
 #Preprocess the subsetted data again
 eye <- SCTransform(
   eye,
@@ -136,7 +171,11 @@ eye <- SCTransform(
   variable.features.n = 1000,
   ncells = 2000
 )
-DefaultAssay(eye) <- "Polygon"
+
+# Check default assay is the new one
+DefaultAssay(eye)
+
+# Dimensionality reduction and clustering again on the subsetted data
 eye <- RunPCA(eye, assay = "Polygon", verbose = FALSE)
 eye <- RunUMAP(eye, dims = 1:30)
 eye <- FindNeighbors(eye, dims = 1:30)
@@ -147,7 +186,7 @@ eye <- FindClusters(
   cluster.name = "leidenClusters_05"
 )
 
-#Visualize the clusters on the subsetted data
+# visualise the clusters on the subsetted data
 DimPlot(
   eye,
   reduction = "umap",
@@ -171,7 +210,9 @@ SpatialDimPlot(
 We can identify marker genes for each cluster using the `FindAllMarkers` function.
 This function identifies genes that are differentially expressed in each cluster compared to all other clusters.
 
-```r
+```{r}
+#| label: find-markers
+
 # Find marker genes for each leiden cluster
 eye_markers <- FindAllMarkers(
   eye,
@@ -184,7 +225,9 @@ eye_markers <- FindAllMarkers(
 
 Additionally we want to see if a BANKSY analysis can help us identify spatial patterns in the data.
 
-```r
+```{r}
+#| label: banksy
+
 # Run BANKSY analysis
 eye_banksy <- RunBanksy(
   eye,
@@ -216,7 +259,7 @@ eye_banksy <- FindClusters(
   cluster.name = "banksy_cluster"
 )
 
-# Visualize BANKSY clusters
+# visualise BANKSY clusters
 DimPlot(
   eye_banksy,
   reduction = "umap",
@@ -249,21 +292,23 @@ eye_banksy_markers <- FindAllMarkers(
 
 We can also identify spatially variable features using the `FindSpatiallyVariableFeatures` function.
 This function identifies genes that show spatially variable expression patterns.
-We are going toreduce out input to the variables features only and only request the top 20 spatially variable features to be found.
+We are going to reduce out input to the variables features only and only request the top 20 spatially variable features to be found.
 We will use the Moran's I method for this analysis.
 This will still take a while to compute and is a good time to get a coffee or potentially do this step overnight and finish the rest of the analysis the next day.
 
-```r
+```{r}
+#| label: spatially-variable-features
+
 # Identify spatially variable features using the Moran's I method
 eye <- FindSpatiallyVariableFeatures(
   eye,
   assay = "Polygon",
-  method = "moransi",
+  selection.method = "moransi",
   features = VariableFeatures(eye),
   nfeatures = 20
 )
-# Visualize the top spatially variable features
-top_spatial_features <- head(SpatiallyVariableFeatures(eye), 5)
+# visualise the top spatially variable features
+top_spatial_features <- head(SpatiallyVariableFeatures(eye), 6)
 SpatialFeaturePlot(
   eye,
   images = "slice1.polygons",
@@ -273,12 +318,12 @@ SpatialFeaturePlot(
 )
 ```
 
-You can now explore the identified marker genes and spatially variable features to gain insights into the spatial organization of cell types and gene expression patterns in the zebrafish eye tissue.
+You can now explore the identified marker genes and spatially variable features to gain insights into the spatial organisation of cell types and gene expression patterns in the zebrafish eye tissue.
 
 ## Conclusion
 
-In this example, we have demonstrated how to load, preprocess, and analyze Visium spatial transcriptomics data using Seurat.
-We have performed subsetting, normalization, dimensionality reduction, clustering, and identified marker genes and spatially variable features.
+In this example, we have demonstrated how to load, preprocess, and analyse Visium spatial transcriptomics data using Seurat.
+We have performed subsetting, normalisation, dimensionality reduction, clustering, and identified marker genes and spatially variable features.
 Additionally, we have explored the use of BANKSY for identifying spatial patterns in the data.
 This workflow can be adapted and extended for other Visium datasets as well.
 
@@ -289,7 +334,7 @@ This workflow can be adapted and extended for other Visium datasets as well.
 
 - Visium data can be loaded into Seurat using the `Load10X_Spatial` function.
 - Quality control is essential to filter out low-quality spots based on metrics like mitochondrial gene percentage.
-- Normalization and scaling can be performed using the `SCTransform` function.
+- Normalisation and scaling can be performed using the `SCTransform` function.
 - Dimensionality reduction (PCA, UMAP) and clustering (Leiden algorithm) help identify distinct cell populations.
 - Marker genes for clusters can be identified using the `FindAllMarkers` function.
 - BANKSY analysis can reveal spatial patterns in gene expression.
