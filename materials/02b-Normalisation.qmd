@@ -3,6 +3,7 @@
 ```{r}
 #| label: setup
 #| include: false
+#| purl: false
 
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 
@@ -270,6 +271,7 @@ As this is a fairly involved process, we provide the step-by-step instructions i
 ```{r}
 #| label: scran-normalisation
 #| echo: false
+#| purl: false
 #| results: "hide"
 #| cache: true
 
@@ -318,6 +320,7 @@ We include the code below to show the intended workflow and link to the current 
 ```{r}
 #| label: spnorm
 #| eval: false
+#| purl: false
 
 # NOTE: this code is for reference only, it currently does not work
 
@@ -436,6 +439,7 @@ If you plan to continue with one representation (for example `SCT`), you can rem
 ```{r}
 #| label: save-full-participant
 #| include: false
+#| purl: false
 
 # Save full normalised object for participant use
 saveRDS(visium, file = "precomputed/mouse_brain_normalised.rds")
@@ -455,6 +459,7 @@ visium[["Spatial"]]$scale.data <- NULL
 ```{r}
 #| label: save-cleaned
 #| eval: false
+#| purl: false
 
 # save the Seurat object
 saveRDS(visium, file = "results/mouse_brain_normalised_cleaned.rds")
@@ -463,6 +468,7 @@ saveRDS(visium, file = "results/mouse_brain_normalised_cleaned.rds")
 ```{r}
 #| label: save-cleaned-participant
 #| include: false
+#| purl: false
 
 # Clean object with only the SCT assay and raw counts in Spatial
 saveRDS(visium, file = "precomputed/mouse_brain_normalised_cleaned.rds")

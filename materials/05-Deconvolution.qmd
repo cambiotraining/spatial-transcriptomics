@@ -3,6 +3,7 @@
 ```{r}
 #| label: setup
 #| include: false
+#| purl: false
 
 knitr::opts_chunk$set(
   echo = TRUE,
@@ -312,6 +313,7 @@ rctd <- run.RCTD(rctd, doublet_mode = "doublet")
 ```{r}
 #| label: save-rctd-doublet
 #| include: false
+#| purl: false
 
 if (!file.exists("precomputed/mouse_brain_rctd_doublet.rds")) {
   saveRDS(rctd, "precomputed/mouse_brain_rctd_doublet.rds")
@@ -458,12 +460,14 @@ The code below shows how it was generated.
 #| results: "hide"
 
 # Run RCTD in full mode
+# Takes a long time to run! Read the precomputed object below instead
 rctd_full <- run.RCTD(rctd, doublet_mode = "full")
 ```
 
 ```{r}
 #| label: save-rctd-multi
 #| include: false
+#| purl: false
 
 if (!file.exists("precomputed/mouse_brain_rctd_full.rds")) {
   saveRDS(rctd_full, "precomputed/mouse_brain_rctd_full.rds")
@@ -713,6 +717,7 @@ Optionally, save the Seurat object with deconvolution results for later use:
 ```{r}
 #| label: save-seurat-object
 #| eval: false
+#| purl: false
 
 # Save Seurat object
 saveRDS(visium, "results/mouse_brain_visium_deconvolution.rds")
@@ -721,6 +726,7 @@ saveRDS(visium, "results/mouse_brain_visium_deconvolution.rds")
 ```{r}
 #| label: save-participant-data
 #| include: false
+#| purl: false
 
 # Save participant data
 if (!file.exists("precomputed/mouse_brain_visium_deconvolution.rds")) {

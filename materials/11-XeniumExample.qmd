@@ -3,6 +3,7 @@
 ```{r}
 #| label: setup
 #| include: false
+#| purl: false
 
 knitr::opts_chunk$set(
   echo = TRUE,
@@ -67,7 +68,6 @@ In this case only 382 genes were measured.
 
 ```{r}
 #| label: visualise-xenium-data
-#| eval: false
 
 # Visualise the dots representing the locations of the transcripts on the tissue slide
 ImageDimPlot(xenium)

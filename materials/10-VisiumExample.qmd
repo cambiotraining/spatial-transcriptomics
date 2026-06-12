@@ -3,6 +3,7 @@
 ```{r}
 #| label: setup
 #| include: false
+#| purl: false
 
 knitr::opts_chunk$set(
   echo = TRUE,
@@ -318,6 +319,7 @@ eye <- FindSpatiallyVariableFeatures(
 ```{r}
 #| label: save-precomputed-object
 #| include: false
+#| purl: false
 
 # Save the object with spatially variable genes for later use
 saveRDS(eye, "precomputed/zebrafish_eye_svgs.rds")
@@ -326,6 +328,7 @@ saveRDS(eye, "precomputed/zebrafish_eye_svgs.rds")
 ```{r}
 #| label: load-spatially-variable-features
 #| eval: false
+#| purl: false
 
 # Load a pre-computed object with spatially variable features
 eye <- readRDS("precomputed/zebrafish_eye_svgs.rds")

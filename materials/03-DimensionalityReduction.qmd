@@ -3,6 +3,7 @@
 ```{r}
 #| label: setup
 #| include: false
+#| purl: false
 
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 
@@ -470,6 +471,7 @@ Finally, save the object:
 ```{r}
 #| label: save-object
 #| eval: false
+#| purl: false
 
 # Save the cleaned object for future use
 saveRDS(visium, "results/mouse_brain_dimred.rds")
@@ -478,6 +480,7 @@ saveRDS(visium, "results/mouse_brain_dimred.rds")
 ```{r}
 #| label: save-participant-data
 #| echo: false
+#| purl: false
 #| results: "hide"
 
 # Save the participant data for future use
