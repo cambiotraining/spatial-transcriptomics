@@ -32,12 +32,16 @@ We will be using single cell functions in Seurat to analyse and visualise the da
 The spatial coordinates are defined by dimensional reduction "spatial", which we will use for visualisation instead of UMAP.
 
 ```{r}
-# Load the required libraries and the data
+#| label: load-libraries
+
+# Load the required libraries
 library(Seurat)
 library(paletteer)
 
+# Load the preprocessed MerFISH dataset
 merfish <- readRDS("data/human_heart_merfish/overall_merfish.rds")
-#Visualize the structure of the heart in the MERFISH data
+
+# Visualise the structure of the heart in the MerFISH data
 DimPlot(
   merfish,
   reduction = "spatial",
@@ -51,15 +55,24 @@ We can use this information to explore the spatial distribution of different cel
 However, there are three full slices of the heart in the dataset, so we will focus on the middle slice for more detailed visualization.
 
 ```{r}
-#Subset to one slice for better visualization
-#To make sure we are getting the result we want we can check the subset as a zoomed in DimPlot
+#| label: subset-middle-slice
+
+# Subset to one slice for better visualisation
+# Check the subset with a zoomed-in DimPlot first
 DimPlot(merfish, reduction = "spatial", raster = FALSE) +
   coord_cartesian(xlim = c(-5000, 500))
-#subset object by spatial reduction coordinates
-spatial_coordinates <- as.data.frame(merfish@reductions$spatial@cell.embeddings)
-middle_heart_coordinates <- spatial_coordinates[
-  spatial_coordinates$SPATIAL_1 > -5000 & spatial_coordinates$SPATIAL_1 < 500,
-]
+
+# Subset the object by spatial reduction coordinates
+# Grab the coordinates for the spatial reduction and convert to a data frame
+spatial_coordinates <- merfish[["spatial"]] |>
+  Embeddings() |>
+  as.data.frame()
+
+# Filter to keep only the region of interest
+middle_heart_coordinates <- spatial_coordinates |>
+  filter(SPATIAL_1 > -5000 & SPATIAL_1 < 500)
+
+# Subset the Seurat object
 cells_to_keep <- rownames(middle_heart_coordinates)
 merfish_heart <- subset(merfish, cells = cells_to_keep)
 ```
@@ -68,18 +81,23 @@ We can visualize the expression of known marker genes to identify different cell
 We will look ar some markers for heart tissue including cardiac fibroblasts, atrial cardiomyocytes and ventricular cardiomyocytes.\
 
 ```{r}
+#| label: plot-heart-markers
+
+# Visualise MYH6 and MYH7 in the selected slice
 FeaturePlot(
   merfish_heart,
   features = c("MYH6", "MYH7"),
   reduction = "spatial",
   raster = FALSE
-) #MYH6: atrium, MYH7: ventricles
+)
+
+# Visualise fibroblast markers in the selected slice
 FeaturePlot(
   merfish_heart,
   features = c("PDGFRA", "PDGFRB", "DCN", "LUM"),
   reduction = "spatial",
   raster = FALSE
-) #cardiac fibroblasts
+)
 ```
 
 To identify other markers for the different clusters, we can use the `FindAllMarkers` function on the existing cluster identities.
@@ -87,6 +105,9 @@ This dataset already has metadata assigned, including Leiden clusters, communiti
 First we will visualise each of these annotations.
 
 ```{r}
+#| label: plot-heart-annotations
+
+# Visualise the existing annotations on the spatial slice
 DimPlot(
   merfish_heart,
   reduction = "spatial",
@@ -115,7 +136,9 @@ Of course we can decide to find all markers for any of these annotations, but fo
 Particularly interesting cases here are comparing the left and right atrium and the left and right ventricles.
 
 ```{r}
-#Find markers for left atrium  vs right atrium
+#| label: compare-atrium-markers
+
+# Find markers for left atrium versus right atrium
 markers_atria <- FindMarkers(
   merfish_heart,
   ident.1 = "Left Atria",
@@ -127,7 +150,7 @@ markers_atria <- FindMarkers(
   pvalue.cutoff = 0.05
 )
 
-#View top 5 markers for left atrium
+# View the top five markers for the left atrium
 head(markers_atria[order(markers_atria$p_val_adj, decreasing = FALSE), ], 5)
 ```
 
@@ -135,9 +158,12 @@ Let's look at one of the top genes more highly expressed in the left atrium, COL
 It's IIA isoform is transiently expressed in the developing heart.
 
 ```{r}
+#| label: plot-atrium-marker
+
+# Visualise COL2A1 in the left atrium
 FeaturePlot(
   merfish_heart,
-  features = c("COL2A1"),
+  features = "COL2A1",
   reduction = "spatial",
   raster = FALSE
 )
@@ -147,8 +173,10 @@ We can do the same for the ventricles.
 They are divided into communities for the outer and innerventricular regions, so we will compare these two separately for left and right ventricles and also compare outter to inner regions.
 
 ```{r}
-#Find markers for outer left ventricle vs right ventricle
-markers_outerVentricles <- FindMarkers(
+#| label: compare-ventricle-markers
+
+# Find markers for outer left ventricle versus outer right ventricle
+markers_outer_ventricles <- FindMarkers(
   merfish_heart,
   ident.1 = "Outer-LV",
   ident.2 = "Outer-RV",
@@ -159,8 +187,8 @@ markers_outerVentricles <- FindMarkers(
   pvalue.cutoff = 0.05
 )
 
-#Find markers for inner left ventricle vs right ventricle
-markers_innerVentricles <- FindMarkers(
+# Find markers for inner left ventricle versus inner right ventricle
+markers_inner_ventricles <- FindMarkers(
   merfish_heart,
   ident.1 = "Inner-LV",
   ident.2 = "Inner-RV",
@@ -171,8 +199,8 @@ markers_innerVentricles <- FindMarkers(
   pvalue.cutoff = 0.05
 )
 
-#Find markers for outer left ventricle vs inner left ventricle
-markers_leftVentricle <- FindMarkers(
+# Find markers for outer versus inner left ventricle
+markers_left_ventricle <- FindMarkers(
   merfish_heart,
   ident.1 = "Outer-LV",
   ident.2 = "Inner-LV",
@@ -182,8 +210,9 @@ markers_leftVentricle <- FindMarkers(
   logfc.threshold = 0.25,
   pvalue.cutoff = 0.05
 )
-#Find markers for outer right ventricle vs inner right ventricle
-markers_rightVentricle <- FindMarkers(
+
+# Find markers for outer versus inner right ventricle
+markers_right_ventricle <- FindMarkers(
   merfish_heart,
   ident.1 = "Outer-RV",
   ident.2 = "Inner-RV",
@@ -200,18 +229,23 @@ From the top results we can try looking at the FeaturePlots to identify markers 
 ::: {.callout-answer}
 
 ```{r}
+#| label: plot-ventricle-markers
+
+# Visualise markers that distinguish the ventricles
 FeaturePlot(
   merfish_heart,
-  features = c("IRX4"),
+  features = "IRX4",
   reduction = "spatial",
   raster = FALSE
-) #left vs right
+)
+
+# Visualise a marker for outer versus inner regions
 FeaturePlot(
   merfish_heart,
-  features = c("HEY2"),
+  features = "HEY2",
   reduction = "spatial",
   raster = FALSE
-) #outer vs inner
+)
 ```
 :::
 

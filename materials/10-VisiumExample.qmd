@@ -57,11 +57,11 @@ library(Matrix)
 library(SeuratWrappers)
 library(Banksy)
 
-# Load the Visium HD 3' dataset with pre-segmented polygons
+# Load the Visium HD 3' dataset using pre-segmented polygons
 v3d <- Load10X_Spatial(
   data.dir = "data/zebrafish_head_visium_hd/",
   slice = "slice1",
-  bin.size = c("polygons")
+  bin.size = "polygons"
 )
 ```
 
@@ -74,13 +74,16 @@ because we are working with polygons, we will use the `nCount_Spatial.Polygons` 
 ```{r}
 #| label: qc
 
-# Calculate percentage of mitochondrial genes
+# Calculate mitochondrial percentage and compare QC metrics before and after filtering
 v3d[["percent.mt"]] <- PercentageFeatureSet(v3d, pattern = "^mt-")
-# visualise QC metrics
+
+# Visualise QC metrics
 VlnPlot(v3d, features = c("nCount_Spatial.Polygons", "percent.mt"), ncol = 2)
+
 # Remove low-quality cells and check the difference in metrics
 v3d <- subset(v3d, subset = nCount_Spatial.Polygons > 5 & percent.mt < 10)
-# visualise QC metrics again to check improvement
+
+# Visualise QC metrics again to check improvement
 VlnPlot(v3d, features = c("nCount_Spatial.Polygons", "percent.mt"), ncol = 2)
 ```
 
@@ -93,7 +96,7 @@ We are also reducing the number of cells used for normalisation to speed up the 
 ```{r}
 #| label: normalisation
 
-# Perform SCTransform normalisation. This is going to take a few minutes, feel free to get a coffee.
+# Run SCTransform normalisation (this may take a few minutes)
 v3d <- SCTransform(
   v3d,
   assay = "Spatial.Polygons",
@@ -103,7 +106,7 @@ v3d <- SCTransform(
   ncells = 2000
 )
 
-# Check default assay is the new one
+# Check that the default assay is now Polygon
 DefaultAssay(v3d)
 ```
 
@@ -115,7 +118,7 @@ We will visualise the clusters using UMAP.
 ```{r}
 #| label: clustering
 
-# Perform PCA
+# Run dimensionality reduction and clustering on the Polygon assay
 v3d <- RunPCA(v3d, assay = "Polygon", verbose = FALSE)
 v3d <- RunUMAP(v3d, dims = 1:30)
 v3d <- FindNeighbors(v3d, dims = 1:30)
@@ -126,7 +129,7 @@ v3d <- FindClusters(
   cluster.name = "leidenClusters_03"
 )
 
-# visualise UMAP with clusters
+# Visualise clusters in UMAP and spatial coordinates
 DimPlot(v3d, reduction = "umap", group.by = "leidenClusters_03", label = TRUE) +
   ggtitle("Leiden Clusters (res=0.3)")
 SpatialDimPlot(v3d, group.by = "leidenClusters_03", label = TRUE) +
@@ -143,10 +146,11 @@ Unfortunately a larger selection might make it impossible for you to run the det
 ```{r}
 #| label: subsetting
 
-subset <- InteractiveSpatialPlot(v3d)
+# Select eye-region cells interactively from the spatial plot
+selected_cells <- InteractiveSpatialPlot(v3d)
 
-#Subset the object to only include the eye region
-eye <- subset(v3d, cells = subset)
+# Subset the object to keep only the eye region
+eye <- subset(v3d, cells = selected_cells)
 SpatialFeaturePlot(
   eye,
   images = "slice1.polygons",
@@ -161,7 +165,7 @@ This data now has to be preprocessed again after subsetting.
 ```{r}
 #| label: preprocess-subset
 
-#Preprocess the subsetted data again
+# Re-run preprocessing and clustering after subsetting
 eye <- SCTransform(
   eye,
   assay = "Spatial.Polygons",
@@ -171,10 +175,10 @@ eye <- SCTransform(
   ncells = 2000
 )
 
-# Check default assay is the new one
+# Check that the default assay is now Polygon
 DefaultAssay(eye)
 
-# Dimensionality reduction and clustering again on the subsetted data
+# Run dimensionality reduction and clustering again on the subsetted data
 eye <- RunPCA(eye, assay = "Polygon", verbose = FALSE)
 eye <- RunUMAP(eye, dims = 1:30)
 eye <- FindNeighbors(eye, dims = 1:30)
@@ -185,7 +189,7 @@ eye <- FindClusters(
   cluster.name = "leidenClusters_05"
 )
 
-# visualise the clusters on the subsetted data
+# Visualise clusters on the subsetted data
 DimPlot(
   eye,
   reduction = "umap",
@@ -212,7 +216,7 @@ This function identifies genes that are differentially expressed in each cluster
 ```{r}
 #| label: find-markers
 
-# Find marker genes for each leiden cluster
+# Find marker genes for each Leiden cluster
 eye_markers <- FindAllMarkers(
   eye,
   only.pos = TRUE,
@@ -227,7 +231,7 @@ Additionally we want to see if a BANKSY analysis can help us identify spatial pa
 ```{r}
 #| label: banksy
 
-# Run BANKSY analysis
+# Run BANKSY and cluster cells using the BANKSY representation
 eye_banksy <- RunBanksy(
   eye,
   lambda = 0.8,
@@ -258,7 +262,7 @@ eye_banksy <- FindClusters(
   cluster.name = "banksy_cluster"
 )
 
-# visualise BANKSY clusters
+# Visualise BANKSY clusters in UMAP and spatial coordinates
 DimPlot(
   eye_banksy,
   reduction = "umap",
@@ -323,7 +327,7 @@ saveRDS(eye, "precomputed/zebrafish_eye_svgs.rds")
 #| label: load-spatially-variable-features
 #| eval: false
 
-# Load pre-computed object with spatially variable features
+# Load a pre-computed object with spatially variable features
 eye <- readRDS("precomputed/zebrafish_eye_svgs.rds")
 ```
 
@@ -332,7 +336,7 @@ You can now explore the identified marker genes and spatially variable features 
 ```{r}
 #| label: explore-markers
 
-# visualise the top spatially variable features
+# Visualise the top spatially variable features
 top_spatial_features <- head(SpatiallyVariableFeatures(eye), 6)
 SpatialFeaturePlot(
   eye,

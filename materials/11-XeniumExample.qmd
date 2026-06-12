@@ -30,6 +30,9 @@ knitr::opts_knit$set(root.dir = here::here("course_files"))
 To run the code in this section, you will need to load the following packages.
 
 ```{r}
+#| label: load_libraries
+
+# Load the packages
 library(Seurat)
 library(SeuratWrappers)
 library(Banksy)
@@ -41,12 +44,48 @@ library(pheatmap)
 
 ## Loading the data
 
-We will use a dataset from the 10X example datasets.
+If you are working with 10X Genomics Xenium data, you can use the `LoadXenium()` function to load the data into a Seurat object.
+This function is specifically designed to handle the unique structure of Xenium data, which includes spatial transcriptomics data with high-resolution spatial coordinates and associated images.
+
+We will use another dataset from the 10X examples.
 The data is available on the 10X website and has been downloaded for you in the course materials at `data/human_melanoma_xenium`.
 
 ```{r}
+#| label: load-xenium-data
+
+# Load the Xenium dataset and initialise the field of view
 xenium <- LoadXenium("data/human_melanoma_xenium", fov = "fov")
 ```
+
+The FOV (Field of View) parameter allows you to specify which field of view to load if the dataset contains multiple fields.
+In this case, we are loading the default field of view.
+
+To visualize the Xenium data we will use the `ImageDimPlot()` function to plot the spatial distribution of cells or spots in the tissue slide.
+We can also visualize the number of features measured in each location using `ImageFeaturePlot()`.
+This shows that while the spatial resolution is very high, the number of features measured per location is quite low compared to other spatial transcriptomics technologies.
+In this case only 382 genes were measured.
+
+```{r}
+#| label: visualise-xenium-data
+#| eval: false
+
+# Visualise the dots representing the locations of the transcripts on the tissue slide
+ImageDimPlot(xenium)
+
+# Visualize the transcript density on the tissue slide
+ImageFeaturePlot(
+  xenium,
+  features = "nFeature_Xenium",
+  cols = paletteer_c("grDevices::Blue-Red 3", 150)
+)
+```
+
+::: {.callout-warning}
+#### Xenium data is large!
+
+Xenium datasets can be quite large, so make sure you have enough memory available to load the data.
+If you encounter memory issues, consider using a machine with more RAM or using a subset of the data for analysis.
+:::
 
 ## Preprocessing and Dimensionality Reduction
 
@@ -55,6 +94,9 @@ Then, run PCA for dimensionality reduction to 30 principal components using all 
 Finally create a UMAP reduction for future visualization.
 
 ```{r}
+#| label: preprocess-xenium
+
+# Normalise expression values and create PCA/UMAP reductions for exploration
 xenium <- SCTransform(xenium, assay = "Xenium", verbose = FALSE)
 xenium <- RunPCA(xenium, npcs = 30, features = rownames(xenium))
 xenium <- RunUMAP(xenium, dims = 1:30)
@@ -70,6 +112,9 @@ The resolution parameter can be adjusted to control the granularity of the clust
 Here, we will use a resolution of 0.5, which is a common starting point.
 
 ```{r}
+#| label: cluster-xenium
+
+# Build the neighbour graph and run Leiden clustering
 xenium <- FindNeighbors(xenium, dims = 1:30, reduction = "pca")
 xenium <- FindClusters(xenium, resolution = 0.5, algorithm = 4)
 ```
@@ -82,6 +127,9 @@ For spatial data, we can also visualize the clusters on the spatial coordinates 
 You can also show a single cluster on the spatial image by using the `cells` argument in the `ImageDimPlot` function and selecting the cells from a specific cluster using the `WhichCells` function to select only cells from cluster 0.
 
 ```{r}
+#| label: visualise-clusters
+
+# Visualise clusters in UMAP space and on the tissue image
 DimPlot(
   xenium,
   reduction = "umap",
@@ -105,6 +153,9 @@ We can then visualize the top marker genes for each cluster using the `FeaturePl
 This will create a scatter plot of the expression of the marker genes on the UMAP reduction, allowing us to see how the marker genes are distributed across the clusters.
 
 ```{r}
+#| label: find-marker-genes
+
+# Identify one top marker per cluster and visualise their expression patterns
 markers <- FindAllMarkers(
   xenium,
   only.pos = TRUE,
@@ -131,6 +182,9 @@ This function will identify spatial clusters in the data based on the spatial co
 We will use the `lambda` parameter to control the strength of the spatial clustering, and the `k_geom` parameter to control the number of nearest neighbors used in the clustering.
 
 ```{r}
+#| label: run-banksy
+
+# Run BANKSY to incorporate neighbourhood information into clustering
 banksy <- RunBanksy(
   xenium,
   lambda = 0.8,
@@ -148,6 +202,9 @@ We can use the `RunPCA` function to create a PCA reduction for the Banksy result
 We will also run clustering on the Banksy results using the `FindNeighbors` and `FindClusters` functions, similar to how we did it for the original data.
 
 ```{r}
+#| label: cluster-banksy
+
+# Create BANKSY reductions and cluster cells in BANKSY space
 banksy <- RunPCA(
   banksy,
   assay = "BANKSY",
@@ -174,6 +231,9 @@ After running the Banksy analysis, we can visualize the spatial clusters identif
 The `ImageDimPlot` function allows us to plot the spatial clusters on the image data.
 
 ```{r}
+#| label: visualise-banksy-clusters
+
+# Visualise BANKSY-derived clusters on the spatial image
 ImageDimPlot(banksy, group.by = "banksy_cluster") +
   labs(title = "Spatial clusters identified by Banksy on image data")
 ```
@@ -185,6 +245,9 @@ We can use the `FindAllMarkers` function to find the marker genes for each Banks
 We can then visualize the top marker genes for each Banksy cluster using the `FeaturePlot` function.
 
 ```{r}
+#| label: investigate-banksy-markers
+
+# Find and visualise top marker genes for each BANKSY cluster
 banksy_markers <- FindAllMarkers(
   banksy,
   only.pos = TRUE,
@@ -217,6 +280,9 @@ The `pheatmap` function can be used to create a heatmap of the contingency table
 We are displaying the number of overlapping genes in each cell of the heatmap using the `display_numbers` argument and formatting the numbers to have no decimal places using the `number_format` argument.
 
 ```{r}
+#| label: compare-cluster-overlap
+
+# Compare Seurat and BANKSY cluster assignments with a contingency heatmap
 contingency_table <- table(banksy$banksy_cluster, xenium$seurat_clusters)
 pheatmap(
   contingency_table,
