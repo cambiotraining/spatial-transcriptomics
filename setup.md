@@ -47,6 +47,7 @@ Download and unzip the folder to your Desktop to follow along with the materials
     "leidenbase",
     "Rfast2",
     "ape",
+    "sf",
     "bioc::clusterProfiler",
     "bioc::org.Hs.eg.db",
     "bioc::glmGamPoi",

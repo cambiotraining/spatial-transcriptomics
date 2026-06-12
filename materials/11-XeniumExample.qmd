@@ -1,10 +1,28 @@
 # Xenium: Human Melanoma
 
+```{r}
+#| label: setup
+#| include: false
+#| purl: false
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  cache.lazy = FALSE,
+  eval = FALSE
+)
+
+# set the working directory to the course_files folder
+# make sure to run course_files/download_course_files.sh
+knitr::opts_knit$set(root.dir = here::here("course_files"))
+```
+
 ::: {.callout-tip}
 #### Learning Objectives
 
 - Go through standard analysis steps for Xenium data
-- Understand how to visualize and interpret Xenium data
+- Understand how to visualise and interpret Xenium data
 - Basic interpretation of markers and spatial patterns
 :::
 
@@ -12,7 +30,10 @@
 
 To run the code in this section, you will need to load the following packages.
 
-```r
+```{r}
+#| label: load_libraries
+
+# Load the packages
 library(Seurat)
 library(SeuratWrappers)
 library(Banksy)
@@ -24,20 +45,58 @@ library(pheatmap)
 
 ## Loading the data
 
-We will use a dataset from the 10X example datasets.
+If you are working with 10X Genomics Xenium data, you can use the `LoadXenium()` function to load the data into a Seurat object.
+This function is specifically designed to handle the unique structure of Xenium data, which includes spatial transcriptomics data with high-resolution spatial coordinates and associated images.
+
+We will use another dataset from the 10X examples.
 The data is available on the 10X website and has been downloaded for you in the course materials at `data/human_melanoma_xenium`.
 
-```r
+```{r}
+#| label: load-xenium-data
+
+# Load the Xenium dataset and initialise the field of view
 xenium <- LoadXenium("data/human_melanoma_xenium", fov = "fov")
 ```
 
+The FOV (Field of View) parameter allows you to specify which field of view to load if the dataset contains multiple fields.
+In this case, we are loading the default field of view.
+
+To visualise the Xenium data we will use the `ImageDimPlot()` function to plot the spatial distribution of cells or spots in the tissue slide.
+We can also visualise the number of features measured in each location using `ImageFeaturePlot()`.
+This shows that while the spatial resolution is very high, the number of features measured per location is quite low compared to other spatial transcriptomics technologies.
+In this case only 382 genes were measured.
+
+```{r}
+#| label: visualise-xenium-data
+
+# Visualise the dots representing the locations of the transcripts on the tissue slide
+ImageDimPlot(xenium)
+
+# Visualise the transcript density on the tissue slide
+ImageFeaturePlot(
+  xenium,
+  features = "nFeature_Xenium",
+  cols = paletteer_c("grDevices::Blue-Red 3", 150)
+)
+```
+
+::: {.callout-warning}
+#### Xenium data is large!
+
+Xenium datasets can be quite large, so make sure you have enough memory available to load the data.
+If you encounter memory issues, consider using a machine with more RAM or using a subset of the data for analysis.
+:::
+
 ## Preprocessing and Dimensionality Reduction
 
-Perform SCTransform on the Xenium data to normalize and scale the data.
+Perform SCTransform on the Xenium data to normalise and scale the data.
 Then, run PCA for dimensionality reduction to 30 principal components using all measured features.
-Finally create a UMAP reduction for future visualization.
+Finally create a UMAP reduction for future visualisation.
 
-```r
+```{r}
+#| label: preprocess-xenium
+
+# Normalise expression values and create PCA/UMAP reductions for exploration
 xenium <- SCTransform(xenium, assay = "Xenium", verbose = FALSE)
 xenium <- RunPCA(xenium, npcs = 30, features = rownames(xenium))
 xenium <- RunUMAP(xenium, dims = 1:30)
@@ -45,26 +104,32 @@ xenium <- RunUMAP(xenium, dims = 1:30)
 
 ## Clustering
 
-Before we run clustering, we need to find the nearest neighbors of each cell in the dataset.
+Before we run clustering, we need to find the nearest neighbours of each cell in the dataset.
 This is done using the `FindNeighbors` function.
 We will use the first 30 principal components from the PCA step for this.
 We will use the Leiden algorithm to cluster the cells in the Xenium dataset.
 The resolution parameter can be adjusted to control the granularity of the clustering.
 Here, we will use a resolution of 0.5, which is a common starting point.
 
-```r
+```{r}
+#| label: cluster-xenium
+
+# Build the neighbour graph and run Leiden clustering
 xenium <- FindNeighbors(xenium, dims = 1:30, reduction = "pca")
 xenium <- FindClusters(xenium, resolution = 0.5, algorithm = 4)
 ```
 
-## Visualizing Clusters
+## Visualising Clusters
 
-We can visualize the clusters using the UMAP reduction we created earlier.
+We can visualise the clusters using the UMAP reduction we created earlier.
 The `DimPlot` function allows us to plot the UMAP with the clusters colored by their cluster identity.
-For spatial data, we can also visualize the clusters on the spatial coordinates of the cells, by using the `ImageDimPlot` function.
+For spatial data, we can also visualise the clusters on the spatial coordinates of the cells, by using the `ImageDimPlot` function.
 You can also show a single cluster on the spatial image by using the `cells` argument in the `ImageDimPlot` function and selecting the cells from a specific cluster using the `WhichCells` function to select only cells from cluster 0.
 
-```r
+```{r}
+#| label: visualise-clusters
+
+# Visualise clusters in UMAP space and on the tissue image
 DimPlot(
   xenium,
   reduction = "umap",
@@ -84,10 +149,13 @@ ImageDimPlot(xenium, cells = WhichCells(xenium, idents = 1)) +
 
 To find marker genes for each cluster, we can use the `FindAllMarkers` function.
 This function will return a data frame with the marker genes for each cluster, along with their average expression, p-value, and adjusted p-value.
-We can then visualize the top marker genes for each cluster using the `FeaturePlot` function.
+We can then visualise the top marker genes for each cluster using the `FeaturePlot` function.
 This will create a scatter plot of the expression of the marker genes on the UMAP reduction, allowing us to see how the marker genes are distributed across the clusters.
 
-```r
+```{r}
+#| label: find-marker-genes
+
+# Identify one top marker per cluster and visualise their expression patterns
 markers <- FindAllMarkers(
   xenium,
   only.pos = TRUE,
@@ -95,9 +163,9 @@ markers <- FindAllMarkers(
   logfc.threshold = 0.25,
   pvalue.cutoff = 0.05
 )
-top_markers <- markers %>%
-  group_by(cluster) %>%
-  top_n(1, avg_log2FC) %>%
+top_markers <- markers |>
+  group_by(cluster) |>
+  top_n(1, avg_log2FC) |>
   ungroup()
 FeaturePlot(xenium, features = top_markers$gene, ncol = 5) +
   plot_annotation(title = "Top marker genes for each cluster")
@@ -111,9 +179,12 @@ We can use the Banksy package to perform a more detailed analysis of the spatial
 The Banksy package provides a set of functions for spatial analysis, including spatial clustering, spatial enrichment, and spatial correlation analysis.
 Here, we will use the `RunBanksy` function provided by the `SeuratWrappers` library to perform spatially informed clustering on the Xenium data.
 This function will identify spatial clusters in the data based on the spatial coordinates of the cells and the expression of the marker genes.
-We will use the `lambda` parameter to control the strength of the spatial clustering, and the `k_geom` parameter to control the number of nearest neighbors used in the clustering.
+We will use the `lambda` parameter to control the strength of the spatial clustering, and the `k_geom` parameter to control the number of nearest neighbours used in the clustering.
 
-```r
+```{r}
+#| label: run-banksy
+
+# Run BANKSY to incorporate neighbourhood information into clustering
 banksy <- RunBanksy(
   xenium,
   lambda = 0.8,
@@ -126,11 +197,14 @@ banksy <- RunBanksy(
 ```
 
 The `RunBanksy` function will return a new `Seurat` object with the Banksy results stored in the `BANKSY` assay.
-We then need to create a new PCA reduction for the Banksy results, which will be used for visualization and further analysis.
+We then need to create a new PCA reduction for the Banksy results, which will be used for visualisation and further analysis.
 We can use the `RunPCA` function to create a PCA reduction for the Banksy results, using the `BANKSY` assay and the `counts` slot.
 We will also run clustering on the Banksy results using the `FindNeighbors` and `FindClusters` functions, similar to how we did it for the original data.
 
-```r
+```{r}
+#| label: cluster-banksy
+
+# Create BANKSY reductions and cluster cells in BANKSY space
 banksy <- RunPCA(
   banksy,
   assay = "BANKSY",
@@ -153,10 +227,13 @@ banksy <- FindClusters(
 )
 ```
 
-After running the Banksy analysis, we can visualize the spatial clusters identified by Banksy on the spatial image.
+After running the Banksy analysis, we can visualise the spatial clusters identified by Banksy on the spatial image.
 The `ImageDimPlot` function allows us to plot the spatial clusters on the image data.
 
-```r
+```{r}
+#| label: visualise-banksy-clusters
+
+# Visualise BANKSY-derived clusters on the spatial image
 ImageDimPlot(banksy, group.by = "banksy_cluster") +
   labs(title = "Spatial clusters identified by Banksy on image data")
 ```
@@ -165,9 +242,12 @@ ImageDimPlot(banksy, group.by = "banksy_cluster") +
 
 We can investigate the BANKSY results by looking at the marker genes for each Banksy cluster.
 We can use the `FindAllMarkers` function to find the marker genes for each Banksy cluster, similar to how we did it for the original clusters.
-We can then visualize the top marker genes for each Banksy cluster using the `FeaturePlot` function.
+We can then visualise the top marker genes for each Banksy cluster using the `FeaturePlot` function.
 
-```r
+```{r}
+#| label: investigate-banksy-markers
+
+# Find and visualise top marker genes for each BANKSY cluster
 banksy_markers <- FindAllMarkers(
   banksy,
   only.pos = TRUE,
@@ -176,9 +256,9 @@ banksy_markers <- FindAllMarkers(
   assay = "BANKSY",
   pvalue.cutoff = 0.05
 )
-banksy_top_markers <- banksy_markers %>%
-  group_by(cluster) %>%
-  top_n(1, avg_log2FC) %>%
+banksy_top_markers <- banksy_markers |>
+  group_by(cluster) |>
+  top_n(1, avg_log2FC) |>
   ungroup()
 FeaturePlot(banksy, features = banksy_top_markers$gene, ncol = 5) +
   plot_annotation(title = "Top marker genes for each Banksy cluster")
@@ -188,18 +268,21 @@ ImageFeaturePlot(banksy, features = banksy_top_markers$gene) +
   )
 ```
 
-BANKSY adds m0 or m1 to the gene names to indicate either mean neighbor expression (m0) or AGF (Azimuthal Gabor filter) based expression (m1).This is why some of the marker genes have the suffix "m0" added here.
+BANKSY adds m0 or m1 to the gene names to indicate either mean neighbour expression (m0) or AGF (Azimuthal Gabor filter)-based expression (m1). This is why some of the marker genes have the suffix "m0" added here.
 
 ## Comparing BANKSY and Seurat Clusters
 
 We can compare the clusters identified by Banksy with the original clusters identified by Seurat.
 We can use the `table` function to create a contingency table showing the overlap between the Banksy clusters and the Seurat clusters.
 This will allow us to see how well the Banksy clusters align with the original clusters by counting the number of cells in each Banksy cluster that belong to each Seurat cluster.
-We can also visualize the overlap between the Banksy clusters and the Seurat clusters using a heatmap.
+We can also visualise the overlap between the Banksy clusters and the Seurat clusters using a heatmap.
 The `pheatmap` function can be used to create a heatmap of the contingency table, showing the number of cells in each Banksy cluster that belong to each Seurat cluster.
 We are displaying the number of overlapping genes in each cell of the heatmap using the `display_numbers` argument and formatting the numbers to have no decimal places using the `number_format` argument.
 
-```r
+```{r}
+#| label: compare-cluster-overlap
+
+# Compare Seurat and BANKSY cluster assignments with a contingency heatmap
 contingency_table <- table(banksy$banksy_cluster, xenium$seurat_clusters)
 pheatmap(
   contingency_table,
@@ -224,18 +307,18 @@ We also cannot use this data to apply cell-cell interaction analysis, as this al
 
 In this section, we have gone through the standard analysis steps for Xenium data, including loading the data, preprocessing, dimensionality reduction, clustering, and finding marker genes.
 We have also used the Banksy package to perform spatially informed clustering on the Xenium data, and compared the Banksy clusters with the original Seurat clusters.
-This analysis provides a comprehensive overview of how to analyze Xenium data and how to interpret the results.
+This analysis provides a comprehensive overview of how to analyse Xenium data and how to interpret the results.
 The use of spatially informed clustering allows us to capture spatial patterns in the data, which can provide valuable insights into the biological processes underlying the data.
 This analysis can be extended to other Xenium datasets or spatial transcriptomics datasets, allowing for a comprehensive understanding of spatial patterns and gene expression in various biological contexts.
 The Xenium platform is mainly used for targeted gene panels, so the analysis here is limited to the genes measured in the panel.
-This is helpful for specific research questions,like studying expesion of a set of genes in a specific tissue context, but often does not allow for a comprehensive analysis of all cells present in the tissue.
+This is helpful for specific research questions, like studying expression of a set of genes in a specific tissue context, but often does not allow for a comprehensive analysis of all cells present in the tissue.
 
 ## Summary
 
 ::: {.callout-tip}
 #### Key Points
 
-- Xenium data can be analyzed using standard Seurat workflows
+- Xenium data can be analysed using standard Seurat workflows
 - Spatial clustering can be performed using the Banksy package
 - Marker genes can be identified for both Seurat and Banksy clusters
 - Comparison of clusters can provide insights into spatial patterns and gene expression patterns

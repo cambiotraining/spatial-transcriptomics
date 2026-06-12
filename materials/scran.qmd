@@ -3,8 +3,14 @@
 ```{r}
 #| label: setup
 #| include: false
+#| purl: false
 
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  cache.lazy = FALSE
+)
 
 # set the working directory to the course_files folder
 # make sure to run course_files/download_course_files.sh
@@ -98,6 +104,7 @@ However, note that Z-scoring is not a standard part of scran workflows.
 ```{r}
 #| label: scran-scaling
 #| eval: false
+#| purl: false
 
 # Add a `scale.data` layer to the Scran assay
 visium <- visium |>
@@ -109,6 +116,7 @@ If you only need a `scale.data` layer (for functions that require it) without Z-
 ```{r}
 #| label: scran-copy-data-to-scale-data
 #| eval: false
+#| purl: false
 
 visium <- visium |>
   ScaleData(assay = "Scran", do.scale = FALSE, do.center = FALSE)
@@ -156,6 +164,7 @@ If you have already run the standard Seurat workflows from earlier chapters, you
 ```{r}
 #| label: compare-hvgs-intersection
 #| eval: false
+#| purl: false
 
 gplots::venn(list(
   Spatial = VariableFeatures(visium, assay = "Spatial"),

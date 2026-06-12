@@ -3,8 +3,14 @@
 ```{r}
 #| label: setup
 #| include: false
+#| purl: false
 
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  cache.lazy = FALSE
+)
 
 # set the working directory to the course_files folder
 # make sure to run course_files/download_course_files.sh
@@ -48,6 +54,7 @@ visium <- readRDS("precomputed/mouse_brain_dimred.rds")
 ```{r}
 #| label: clean-visium-data
 #| include: false
+#| purl: false
 
 # Remove leftover clusterings from previous chapters
 # Need to fix this in the precomputed object to avoid confusion
@@ -470,6 +477,7 @@ This allows you, for example, to omit the `group.by` parameter in visualisation 
 ```{r}
 #| label: visualise-final-clusters
 #| eval: false
+#| purl: false
 
 SpatialDimPlot(visium, label = TRUE)
 ```
@@ -482,6 +490,7 @@ Also remember, that it's always a good idea to save your intermediate analysis, 
 ```{r}
 #| label: save-object
 #| eval: false
+#| purl: false
 
 # Save the object for future use
 saveRDS(visium, "results/mouse_brain_clustering.rds")
@@ -490,6 +499,7 @@ saveRDS(visium, "results/mouse_brain_clustering.rds")
 ```{r}
 #| label: save-participant-object
 #| include: false
+#| purl: false
 
 saveRDS(visium, "precomputed/mouse_brain_clustering.rds")
 ```

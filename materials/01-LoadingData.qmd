@@ -3,8 +3,14 @@
 ```{r}
 #| label: setup
 #| include: false
+#| purl: false
 
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  cache.lazy = FALSE
+)
 
 # set the working directory to the course_files folder
 # make sure to run course_files/download_course_files.sh
@@ -111,7 +117,7 @@ The main components are:
 - `meta.data`: Contains metadata for each spot/cell, such as quality control metrics and experimental conditions.
 - `reductions`: Contains dimensionality reduction results, such as PCA or UMAP.
 - `images`: Contains images associated with the spatial transcriptomics data.
-- `graphs`: Contains graph-based representations of the data, such as nearest neighbor graphs.
+- `graphs`: Contains graph-based representations of the data, such as nearest neighbour graphs.
 - `tools`: Contains various tools and methods used for analysis.
 
 The Seurat manual provides a [detailed list of accessors](https://satijalab.org/seurat/articles/essential_commands) for these components.
@@ -156,6 +162,7 @@ visium[["Spatial"]]$counts
 ```{r}
 #| label: view-counts
 #| include: false
+#| purl: false
 
 visium[["Spatial"]]$counts[1:10, 1:5]
 ```
@@ -259,15 +266,15 @@ The examples below show transcript counts, a simple metadata category, and the s
 This helps you see how the different plot types emphasise different aspects of the same object.
 
 ```{r}
-#| label: visualize-visium-data
+#| label: visualise-visium-data
 
-# Visualize the number of transcripts per spot
+# Visualise the number of transcripts per spot
 SpatialFeaturePlot(visium, features = "nCount_Spatial")
 
 # Visualise the yes/no variable we created earlier
 SpatialDimPlot(visium, group.by = "nCountGreater1000")
 
-# Visualize the transcript locations on the tissue slide
+# Visualise the transcript locations on the tissue slide
 # size controls the size of the points (0.5 by default)
 ImageDimPlot(visium, group.by = "nCountGreater1000", size = 1.5)
 
@@ -281,6 +288,7 @@ For example, you can add a title to a spatial plot:
 ```{r}
 #| label: customise-plot
 #| eval: false
+#| purl: false
 
 # Add title to the plot
 SpatialFeaturePlot(visium, features = "nCount_Spatial") +
@@ -297,6 +305,7 @@ You can do this with the standard R functions `saveRDS()` and `readRDS()`, which
 ```{r}
 #| label: save-visium-object
 #| eval: false
+#| purl: false
 
 # Save the Seurat object to disk
 saveRDS(visium, file = "results/visium_brain.rds")
@@ -307,6 +316,7 @@ To re-read the object later on, you can use:
 ```{r}
 #| label: load-visium-object
 #| eval: false
+#| purl: false
 
 # Load the Seurat object from disk
 visium <- readRDS("results/visium_brain.rds")
@@ -333,6 +343,7 @@ The data is available on the 10X website and has been downloaded for you in the 
 ```{r}
 #| label: load-xenium-data
 #| eval: false
+#| purl: false
 
 # load the xenium data - takes a while to load
 xenium <- LoadXenium("data/human_melanoma_xenium", fov = "fov")
@@ -341,19 +352,20 @@ xenium <- LoadXenium("data/human_melanoma_xenium", fov = "fov")
 The FOV (Field of View) parameter allows you to specify which field of view to load if the dataset contains multiple fields.
 In this case, we are loading the default field of view.
 
-To visualize the Xenium data we will use the `ImageDimPlot()` function to plot the spatial distribution of cells or spots in the tissue slide.
-We can also visualize the number of features measured in each location using `ImageFeaturePlot()`.
+To visualise the Xenium data we will use the `ImageDimPlot()` function to plot the spatial distribution of cells or spots in the tissue slide.
+We can also visualise the number of features measured in each location using `ImageFeaturePlot()`.
 This shows that while the spatial resolution is very high, the number of features measured per location is quite low compared to other spatial transcriptomics technologies.
 In this case only 382 genes were measured.
 
 ```{r}
-#| label: visualize-xenium-data
+#| label: visualise-xenium-data
 #| eval: false
+#| purl: false
 
 # Visualise the dots representing the locations of the transcripts on the tissue slide
 ImageDimPlot(xenium)
 
-# Visualize the transcript density on the tissue slide
+# Visualise the transcript density on the tissue slide
 ImageFeaturePlot(
   xenium,
   features = "nFeature_Xenium",

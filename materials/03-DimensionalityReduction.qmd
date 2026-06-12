@@ -3,8 +3,14 @@
 ```{r}
 #| label: setup
 #| include: false
+#| purl: false
 
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  cache.lazy = FALSE
+)
 
 # set the working directory to the course_files folder
 # make sure to run course_files/download_course_files.sh
@@ -426,7 +432,7 @@ visium <- RunTSNE(
   reduction.key = "TSNELP"
 )
 
-#Visualize the tSNE results with different parameters
+# Visualise the tSNE results with different parameters
 tsneHighPerp <- DimPlot(visium, reduction = "tsne_highperp") +
   ggtitle("perplexity = 100") +
   theme(legend.position = "none")
@@ -470,6 +476,7 @@ Finally, save the object:
 ```{r}
 #| label: save-object
 #| eval: false
+#| purl: false
 
 # Save the cleaned object for future use
 saveRDS(visium, "results/mouse_brain_dimred.rds")
@@ -478,6 +485,7 @@ saveRDS(visium, "results/mouse_brain_dimred.rds")
 ```{r}
 #| label: save-participant-data
 #| echo: false
+#| purl: false
 #| results: "hide"
 
 # Save the participant data for future use

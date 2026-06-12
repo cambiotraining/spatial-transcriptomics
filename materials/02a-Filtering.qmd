@@ -3,8 +3,14 @@
 ```{r}
 #| label: setup
 #| include: false
+#| purl: false
 
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  cache.lazy = FALSE
+)
 
 # set the working directory to the course_files folder
 # make sure to run course_files/download_course_files.sh
@@ -168,7 +174,7 @@ Now that we have calculated the QC metrics, we can inspect their distributions t
 #| label: filter-low-quality-cells
 #| warning: false
 
-# Visualize QC metrics
+# Visualise QC metrics
 VlnPlot(
   visium,
   features = c("nCount_Spatial", "nFeature_Spatial", "percentMt_Spatial")
@@ -209,7 +215,7 @@ We can also visualise these metrics on the tissue image:
 ```{r}
 #| label: spatial-qc-metrics
 
-# Visualize QC metrics on spatial plot
+# Visualise QC metrics on spatial plot
 SpatialPlot(
   visium,
   features = c("nCount_Spatial", "nFeature_Spatial", "percentMt_Spatial"),
@@ -315,7 +321,7 @@ head(visium[[]])
 We can now visualise each filter on the tissue image to see where low-quality spots are concentrated:
 
 ```{r}
-#| label: visualize-filtered-cells
+#| label: visualise-filtered-cells
 
 SpatialDimPlot(
   visium,
@@ -378,6 +384,7 @@ In R, you negate a logical vector with `!`, so the following code would retain t
 ```{r}
 #| label: apply-combined-filter
 #| eval: false
+#| purl: false
 
 # Apply filter using the combinedFiltered column
 visium <- subset(visium, subset = !combinedFiltered)
@@ -392,6 +399,7 @@ As usual, it is a good idea to save your Seurat object after each major step so 
 ```{r}
 #| label: save
 #| eval: false
+#| purl: false
 
 # Save the filtered Seurat object
 saveRDS(visium, file = "results/mouse_brain_filtered.rds")
@@ -400,6 +408,7 @@ saveRDS(visium, file = "results/mouse_brain_filtered.rds")
 ```{r}
 #| label: save-participant-data
 #| include: false
+#| purl: false
 
 # Save the filtered Seurat object
 saveRDS(visium, file = "precomputed/mouse_brain_filtered.rds")

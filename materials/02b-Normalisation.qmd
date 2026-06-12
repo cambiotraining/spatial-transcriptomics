@@ -3,8 +3,14 @@
 ```{r}
 #| label: setup
 #| include: false
+#| purl: false
 
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  cache.lazy = FALSE
+)
 
 # set the working directory to the course_files folder
 # make sure to run course_files/download_course_files.sh
@@ -117,7 +123,7 @@ A key argument is `vars.to.regress`, which removes variation linked to metadata 
 #| warning: false
 #| message: false
 
-# Perform SCTransform normalization
+# Perform SCTransform normalisation
 visium <- SCTransform(
   visium,
   assay = "Spatial",
@@ -270,6 +276,7 @@ As this is a fairly involved process, we provide the step-by-step instructions i
 ```{r}
 #| label: scran-normalisation
 #| echo: false
+#| purl: false
 #| results: "hide"
 #| cache: true
 
@@ -318,6 +325,7 @@ We include the code below to show the intended workflow and link to the current 
 ```{r}
 #| label: spnorm
 #| eval: false
+#| purl: false
 
 # NOTE: this code is for reference only, it currently does not work
 
@@ -325,7 +333,7 @@ We include the code below to show the intended workflow and link to the current 
 visium[["SpaNorm"]] <- CreateAssayObject(counts = visium[["Spatial"]]$counts)
 DefaultAssay(visium) <- "SpaNorm"
 
-# Perform SpaNorm normalization - currently fails due to bug
+# Perform SpaNorm normalisation - currently fails due to bug
 visium <- SpaNorm::SpaNorm(visium)
 
 # check the new assay
@@ -363,7 +371,7 @@ We will cover clustering in depth in a [later chapter](04-Clustering.qmd).
 Here the goal is method comparison, so don't worry too much about the details of the implementation.
 
 ```{r}
-#| label: compare-normalization
+#| label: compare-normalisation
 #| warning: false
 #| message: false
 #| results: "hide"
@@ -396,7 +404,7 @@ head(visium[[]])
 We can use the `SpatialDimPlot()` function to visualise the clustering results for these methods:
 
 ```{r}
-#| label: plot-normalization-comparison
+#| label: plot-normalisation-comparison
 
 SpatialDimPlot(
   visium,
@@ -436,6 +444,7 @@ If you plan to continue with one representation (for example `SCT`), you can rem
 ```{r}
 #| label: save-full-participant
 #| include: false
+#| purl: false
 
 # Save full normalised object for participant use
 saveRDS(visium, file = "precomputed/mouse_brain_normalised.rds")
@@ -455,6 +464,7 @@ visium[["Spatial"]]$scale.data <- NULL
 ```{r}
 #| label: save-cleaned
 #| eval: false
+#| purl: false
 
 # save the Seurat object
 saveRDS(visium, file = "results/mouse_brain_normalised_cleaned.rds")
@@ -463,6 +473,7 @@ saveRDS(visium, file = "results/mouse_brain_normalised_cleaned.rds")
 ```{r}
 #| label: save-cleaned-participant
 #| include: false
+#| purl: false
 
 # Clean object with only the SCT assay and raw counts in Spatial
 saveRDS(visium, file = "precomputed/mouse_brain_normalised_cleaned.rds")

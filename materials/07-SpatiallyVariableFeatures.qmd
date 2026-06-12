@@ -3,8 +3,14 @@
 ```{r}
 #| label: setup
 #| include: false
+#| purl: false
 
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  cache.lazy = FALSE
+)
 
 # set the working directory to the course_files folder
 # make sure to run course_files/download_course_files.sh
@@ -172,6 +178,24 @@ To do that, run `FindSpatiallyVariableFeatures()` again with `selection.method =
 The markvariogram method is slower than Moran's I, so this chapter uses a precomputed object to save time.
 You can expand the code block below to see the code used.
 
+
+```{r}
+#| label: find-svg-markvariogram
+#| cache: true
+#| code-fold: true
+#| code-summary: "Run FindSpatiallyVariableFeatures with markvariogram - takes a long time, read precomputed object instead"
+#| eval: false
+
+# Identify spatially variable features using the "markvariogram" method
+# Takes a long time to run! Read the precomputed object below instead
+visium <- FindSpatiallyVariableFeatures(
+  visium,
+  assay = "SCT",
+  selection.method = "markvariogram",
+  nfeatures = 2000
+)
+```
+
 ```{r}
 #| label: load-markvariogram-results
 #| eval: false
@@ -184,7 +208,7 @@ visium <- readRDS("precomputed/mouse_brain_svgs.rds")
 #| label: create-object
 #| cache: true
 #| include: false
-#| echo: false
+#| purl: false
 
 # If precomputed object doesn't exist, run the code to create it
 if (!file.exists("precomputed/mouse_brain_svgs.rds")) {
@@ -200,20 +224,6 @@ if (!file.exists("precomputed/mouse_brain_svgs.rds")) {
 }
 ```
 
-```{r}
-#| label: find-svg-markvariogram
-#| cache: true
-#| code-fold: true
-#| eval: false
-
-# Identify spatially variable features using the "markvariogram" method
-visium <- FindSpatiallyVariableFeatures(
-  visium,
-  assay = "SCT",
-  selection.method = "markvariogram",
-  nfeatures = 2000
-)
-```
 
 After running the function again, `SpatiallyVariableFeatures()` returns the top 2000 SVGs identified with markvariogram instead of Moran's I.
 
