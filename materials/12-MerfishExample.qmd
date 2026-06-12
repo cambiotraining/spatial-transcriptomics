@@ -1,5 +1,22 @@
 # MerFISH: Human Heart
 
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  cache.lazy = FALSE,
+  eval = FALSE
+)
+
+# set the working directory to the course_files folder
+# make sure to run course_files/download_course_files.sh
+knitr::opts_knit$set(root.dir = here::here("course_files"))
+```
+
 ::: {.callout-tip}
 #### Learning Objectives
 
@@ -14,7 +31,7 @@ As there is no image associated with the data, this is basically a spatially res
 We will be using single cell functions in Seurat to analyse and visualise the data.
 The spatial coordinates are defined by dimensional reduction "spatial", which we will use for visualisation instead of UMAP.
 
-```r
+```{r}
 # Load the required libraries and the data
 library(Seurat)
 library(paletteer)
@@ -33,7 +50,7 @@ As you can see, the data is already annotated with cluster identities and tissue
 We can use this information to explore the spatial distribution of different cell types in the heart tissue.
 However, there are three full slices of the heart in the dataset, so we will focus on the middle slice for more detailed visualization.
 
-```r
+```{r}
 #Subset to one slice for better visualization
 #To make sure we are getting the result we want we can check the subset as a zoomed in DimPlot
 DimPlot(merfish, reduction = "spatial", raster = FALSE) +
@@ -50,7 +67,7 @@ merfish_heart <- subset(merfish, cells = cells_to_keep)
 We can visualize the expression of known marker genes to identify different cell types and tissue architecture.
 We will look ar some markers for heart tissue including cardiac fibroblasts, atrial cardiomyocytes and ventricular cardiomyocytes.\
 
-```r
+```{r}
 FeaturePlot(
   merfish_heart,
   features = c("MYH6", "MYH7"),
@@ -69,7 +86,7 @@ To identify other markers for the different clusters, we can use the `FindAllMar
 This dataset already has metadata assigned, including Leiden clusters, communities and populations.
 First we will visualise each of these annotations.
 
-```r
+```{r}
 DimPlot(
   merfish_heart,
   reduction = "spatial",
@@ -97,7 +114,7 @@ DimPlot(
 Of course we can decide to find all markers for any of these annotations, but for this example we will use the "communities" annotation and use the `FindMarkers` function to identify differentially expressed genes between two communities of interest.
 Particularly interesting cases here are comparing the left and right atrium and the left and right ventricles.
 
-```r
+```{r}
 #Find markers for left atrium  vs right atrium
 markers_atria <- FindMarkers(
   merfish_heart,
@@ -113,10 +130,11 @@ markers_atria <- FindMarkers(
 #View top 5 markers for left atrium
 head(markers_atria[order(markers_atria$p_val_adj, decreasing = FALSE), ], 5)
 ```
+
 Let's look at one of the top genes more highly expressed in the left atrium, COL2A1, which is a collagen gene.
 It's IIA isoform is transiently expressed in the developing heart.
 
-```r
+```{r}
 FeaturePlot(
   merfish_heart,
   features = c("COL2A1"),
@@ -128,7 +146,7 @@ FeaturePlot(
 We can do the same for the ventricles.
 They are divided into communities for the outer and innerventricular regions, so we will compare these two separately for left and right ventricles and also compare outter to inner regions.
 
-```r
+```{r}
 #Find markers for outer left ventricle vs right ventricle
 markers_outerVentricles <- FindMarkers(
   merfish_heart,
@@ -179,10 +197,9 @@ markers_rightVentricle <- FindMarkers(
 
 From the top results we can try looking at the FeaturePlots to identify markers for left vs right ventricles and inner vs outer regions.
 
-::: {.callout-tip collapse="true"}
-#### Answer
+::: {.callout-answer}
 
-```r
+```{r}
 FeaturePlot(
   merfish_heart,
   features = c("IRX4"),

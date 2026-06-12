@@ -17,7 +17,6 @@ knitr::opts_chunk$set(
 knitr::opts_knit$set(root.dir = here::here("course_files"))
 ```
 
-
 ::: {.callout-tip}
 #### Learning Objectives
 
@@ -294,10 +293,13 @@ We can also identify spatially variable features using the `FindSpatiallyVariabl
 This function identifies genes that show spatially variable expression patterns.
 We are going to reduce out input to the variables features only and only request the top 20 spatially variable features to be found.
 We will use the Moran's I method for this analysis.
-This will still take a while to compute and is a good time to get a coffee or potentially do this step overnight and finish the rest of the analysis the next day.
+This will take a while to compute, so we provide a pre-computed object that you can load for further exploration.
+You can see the code for running this analysis below, but we recommend that you load the pre-computed results for further exploration you may want to do on these data.
 
 ```{r}
 #| label: spatially-variable-features
+#| code-fold: true
+#| code-summary: "Code for finding spatially variable features - takes a long time to run!"
 
 # Identify spatially variable features using the Moran's I method
 eye <- FindSpatiallyVariableFeatures(
@@ -307,6 +309,29 @@ eye <- FindSpatiallyVariableFeatures(
   features = VariableFeatures(eye),
   nfeatures = 20
 )
+```
+
+```{r}
+#| label: save-precomputed-object
+#| include: false
+
+# Save the object with spatially variable genes for later use
+saveRDS(eye, "precomputed/zebrafish_eye_svgs.rds")
+```
+
+```{r}
+#| label: load-spatially-variable-features
+#| eval: false
+
+# Load pre-computed object with spatially variable features
+eye <- readRDS("precomputed/zebrafish_eye_svgs.rds")
+```
+
+You can now explore the identified marker genes and spatially variable features to gain insights into the spatial organisation of cell types and gene expression patterns in the zebrafish eye tissue.
+
+```{r}
+#| label: explore-markers
+
 # visualise the top spatially variable features
 top_spatial_features <- head(SpatiallyVariableFeatures(eye), 6)
 SpatialFeaturePlot(
@@ -317,8 +342,6 @@ SpatialFeaturePlot(
   crop = TRUE
 )
 ```
-
-You can now explore the identified marker genes and spatially variable features to gain insights into the spatial organisation of cell types and gene expression patterns in the zebrafish eye tissue.
 
 ## Conclusion
 
