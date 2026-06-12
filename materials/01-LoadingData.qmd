@@ -117,7 +117,7 @@ The main components are:
 - `meta.data`: Contains metadata for each spot/cell, such as quality control metrics and experimental conditions.
 - `reductions`: Contains dimensionality reduction results, such as PCA or UMAP.
 - `images`: Contains images associated with the spatial transcriptomics data.
-- `graphs`: Contains graph-based representations of the data, such as nearest neighbor graphs.
+- `graphs`: Contains graph-based representations of the data, such as nearest neighbour graphs.
 - `tools`: Contains various tools and methods used for analysis.
 
 The Seurat manual provides a [detailed list of accessors](https://satijalab.org/seurat/articles/essential_commands) for these components.
@@ -266,15 +266,15 @@ The examples below show transcript counts, a simple metadata category, and the s
 This helps you see how the different plot types emphasise different aspects of the same object.
 
 ```{r}
-#| label: visualize-visium-data
+#| label: visualise-visium-data
 
-# Visualize the number of transcripts per spot
+# Visualise the number of transcripts per spot
 SpatialFeaturePlot(visium, features = "nCount_Spatial")
 
 # Visualise the yes/no variable we created earlier
 SpatialDimPlot(visium, group.by = "nCountGreater1000")
 
-# Visualize the transcript locations on the tissue slide
+# Visualise the transcript locations on the tissue slide
 # size controls the size of the points (0.5 by default)
 ImageDimPlot(visium, group.by = "nCountGreater1000", size = 1.5)
 
@@ -352,20 +352,20 @@ xenium <- LoadXenium("data/human_melanoma_xenium", fov = "fov")
 The FOV (Field of View) parameter allows you to specify which field of view to load if the dataset contains multiple fields.
 In this case, we are loading the default field of view.
 
-To visualize the Xenium data we will use the `ImageDimPlot()` function to plot the spatial distribution of cells or spots in the tissue slide.
-We can also visualize the number of features measured in each location using `ImageFeaturePlot()`.
+To visualise the Xenium data we will use the `ImageDimPlot()` function to plot the spatial distribution of cells or spots in the tissue slide.
+We can also visualise the number of features measured in each location using `ImageFeaturePlot()`.
 This shows that while the spatial resolution is very high, the number of features measured per location is quite low compared to other spatial transcriptomics technologies.
 In this case only 382 genes were measured.
 
 ```{r}
-#| label: visualize-xenium-data
+#| label: visualise-xenium-data
 #| eval: false
 #| purl: false
 
 # Visualise the dots representing the locations of the transcripts on the tissue slide
 ImageDimPlot(xenium)
 
-# Visualize the transcript density on the tissue slide
+# Visualise the transcript density on the tissue slide
 ImageFeaturePlot(
   xenium,
   features = "nFeature_Xenium",

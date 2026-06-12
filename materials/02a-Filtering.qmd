@@ -174,7 +174,7 @@ Now that we have calculated the QC metrics, we can inspect their distributions t
 #| label: filter-low-quality-cells
 #| warning: false
 
-# Visualize QC metrics
+# Visualise QC metrics
 VlnPlot(
   visium,
   features = c("nCount_Spatial", "nFeature_Spatial", "percentMt_Spatial")
@@ -215,7 +215,7 @@ We can also visualise these metrics on the tissue image:
 ```{r}
 #| label: spatial-qc-metrics
 
-# Visualize QC metrics on spatial plot
+# Visualise QC metrics on spatial plot
 SpatialPlot(
   visium,
   features = c("nCount_Spatial", "nFeature_Spatial", "percentMt_Spatial"),
@@ -321,7 +321,7 @@ head(visium[[]])
 We can now visualise each filter on the tissue image to see where low-quality spots are concentrated:
 
 ```{r}
-#| label: visualize-filtered-cells
+#| label: visualise-filtered-cells
 
 SpatialDimPlot(
   visium,

@@ -260,7 +260,7 @@ BANKSY fragments this scattered cluster into more spatially unified domains.
 This shows how BANKSY emphasises tissue architecture.
 Even with a relatively modest lambda value of 0.2, spatial structure emerges clearly.
 
-We also see what might be some artifacts in the BANKSY clusters.
+We also see what might be some artefacts in the BANKSY clusters.
 For example, spots from the olfactory bulb (on the left) are placed in cluster 2, which might not be biologically correct.
 As always, knowledge of the biology would help interpret and judge the validity of these results.
 

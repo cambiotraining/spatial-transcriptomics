@@ -1,4 +1,4 @@
-# MerFISH: Human Heart
+# MERFISH: Human Heart
 
 ```{r}
 #| label: setup
@@ -21,12 +21,12 @@ knitr::opts_knit$set(root.dir = here::here("course_files"))
 ::: {.callout-tip}
 #### Learning Objectives
 
-- Go through standard analysis steps for preprocessed Merfish data
-- Understand how to visualize and interpret merfish data
+- Go through standard analysis steps for preprocessed MERFISH data
+- Understand how to visualise and interpret MERFISH data
 - Basic interpretation of markers and spatial patterns
 :::
 
-For this example, we will be using the preprocessed Merfish dataset of the human heart again.
+For this example, we will be using the preprocessed MERFISH dataset of the human heart again.
 The dataset contains spatially resolved gene expression data for various cell types in the heart tissue.
 As there is no image associated with the data, this is basically a spatially resolved single-cell dataset.
 We will be using single cell functions in Seurat to analyse and visualise the data.
@@ -39,10 +39,10 @@ The spatial coordinates are defined by dimensional reduction "spatial", which we
 library(Seurat)
 library(paletteer)
 
-# Load the preprocessed MerFISH dataset
+# Load the preprocessed MERFISH dataset
 merfish <- readRDS("data/human_heart_merfish/overall_merfish.rds")
 
-# Visualise the structure of the heart in the MerFISH data
+# Visualise the structure of the heart in the MERFISH data
 DimPlot(
   merfish,
   reduction = "spatial",
@@ -53,7 +53,7 @@ DimPlot(
 
 As you can see, the data is already annotated with cluster identities and tissue types.
 We can use this information to explore the spatial distribution of different cell types in the heart tissue.
-However, there are three full slices of the heart in the dataset, so we will focus on the middle slice for more detailed visualization.
+However, there are three full slices of the heart in the dataset, so we will focus on the middle slice for more detailed visualisation.
 
 ```{r}
 #| label: subset-middle-slice
@@ -78,8 +78,8 @@ cells_to_keep <- rownames(middle_heart_coordinates)
 merfish_heart <- subset(merfish, cells = cells_to_keep)
 ```
 
-We can visualize the expression of known marker genes to identify different cell types and tissue architecture.
-We will look ar some markers for heart tissue including cardiac fibroblasts, atrial cardiomyocytes and ventricular cardiomyocytes.\
+We can visualise the expression of known marker genes to identify different cell types and tissue architecture.
+We will look at some markers for heart tissue, including cardiac fibroblasts, atrial cardiomyocytes, and ventricular cardiomyocytes.
 
 ```{r}
 #| label: plot-heart-markers
@@ -251,22 +251,22 @@ FeaturePlot(
 :::
 
 As this is not a proper spatial dataset (for Seurat), we cannot use spatially aware functions like `FindSpatiallyVariableFeatures` or packages like BANKSY here.
-However, we can use the spatial coordinates to visualise the expression of genes of interest in the tissue context and the full dataset of heart samples from differen developmental stages can be used to track the gene expression changes during development.
+However, we can use the spatial coordinates to visualise the expression of genes of interest in the tissue context, and the full dataset of heart samples from different developmental stages can be used to track gene expression changes during development.
 
 ## Conclusion
 
-MERFISH is a powerful technique for spatially resolved transcriptomics, allowing for the visualization and analysis of gene expression patterns in tissue sections.
+MERFISH is a powerful technique for spatially resolved transcriptomics, allowing for the visualisation and analysis of gene expression patterns in tissue sections.
 In this example, we have explored the spatial distribution of different cell types in the human heart tissue using MERFISH data.
 We have also identified marker genes for different communities in the heart tissue, including atrial and ventricular regions.
-This analysis provides insights into the cellular composition and organization of the heart tissue, which can be further explored to understand the underlying biological processes and disease mechanisms.
+This analysis provides insights into the cellular composition and organisation of the heart tissue, which can be further explored to understand the underlying biological processes and disease mechanisms.
 
 ## Summary
 
 ::: {.callout-tip}
 #### Key Points
 
-- MERFISH data can be analyzed using Seurat functions for single-cell data, with spatial coordinates used for visualization.
-- Marker genes can be identified for different communities in the tissue, providing insights into cellular composition and organization.
-- Visualization of gene expression patterns in the tissue context can reveal spatial distribution of cell types and regions.
+- MERFISH data can be analysed using Seurat functions for single-cell data, with spatial coordinates used for visualisation.
+- Marker genes can be identified for different communities in the tissue, providing insights into cellular composition and organisation.
+- Visualisation of gene expression patterns in the tissue context can reveal spatial distribution of cell types and regions.
 - MERFISH can be applied in a larger scale to compare gene expression patterns across different developmental stages or disease conditions, as can be more affordable compared to other spatial transcriptomics technologies.
 :::

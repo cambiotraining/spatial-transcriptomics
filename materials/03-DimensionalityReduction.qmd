@@ -432,7 +432,7 @@ visium <- RunTSNE(
   reduction.key = "TSNELP"
 )
 
-#Visualize the tSNE results with different parameters
+# Visualise the tSNE results with different parameters
 tsneHighPerp <- DimPlot(visium, reduction = "tsne_highperp") +
   ggtitle("perplexity = 100") +
   theme(legend.position = "none")
