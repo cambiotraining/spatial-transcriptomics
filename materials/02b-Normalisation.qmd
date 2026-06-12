@@ -5,7 +5,12 @@
 #| include: false
 #| purl: false
 
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  cache.lazy = FALSE
+)
 
 # set the working directory to the course_files folder
 # make sure to run course_files/download_course_files.sh
