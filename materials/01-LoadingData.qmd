@@ -316,34 +316,21 @@ To re-read the object later on, you can use:
 ```{r}
 #| label: load-visium-object
 #| eval: false
-#| purl: false
 
 # Load the Seurat object from disk
 visium <- readRDS("results/visium_brain.rds")
 ```
 
-<!--
-Hugo note: I have for now commented this out, to keep things simple and focused on Visium, which forms the main component of the detailed workflow chapters. Perhaps these details can be added to the case study later on?
-
-## Loading Xenium Data into Seurat
+## Loading Xenium Data
 
 If you are working with 10X Genomics Xenium data, you can use the `LoadXenium()` function to load the data into a Seurat object.
 This function is specifically designed to handle the unique structure of Xenium data, which includes spatial transcriptomics data with high-resolution spatial coordinates and associated images.
-
-::: {.callout-warning}
-#### Xenium data is large!
-
-Xenium datasets can be quite large, so make sure you have enough memory available to load the data.
-If you encounter memory issues, consider using a machine with more RAM or using a subset of the data for analysis.
-:::
 
 We will use another dataset from the 10X examples.
 The data is available on the 10X website and has been downloaded for you in the course materials at `data/human_melanoma_xenium`.
 
 ```{r}
 #| label: load-xenium-data
-#| eval: false
-#| purl: false
 
 # load the xenium data - takes a while to load
 xenium <- LoadXenium("data/human_melanoma_xenium", fov = "fov")
@@ -352,18 +339,19 @@ xenium <- LoadXenium("data/human_melanoma_xenium", fov = "fov")
 The FOV (Field of View) parameter allows you to specify which field of view to load if the dataset contains multiple fields.
 In this case, we are loading the default field of view.
 
-To visualise the Xenium data we will use the `ImageDimPlot()` function to plot the spatial distribution of cells or spots in the tissue slide.
-We can also visualise the number of features measured in each location using `ImageFeaturePlot()`.
-This shows that while the spatial resolution is very high, the number of features measured per location is quite low compared to other spatial transcriptomics technologies.
-In this case only 382 genes were measured.
+For single-cell resolution methods like Xenium, we can use the `ImageDimPlot()` function to plot the spatial distribution of cells or spots in the tissue slide:
 
 ```{r}
 #| label: visualise-xenium-data
-#| eval: false
-#| purl: false
 
-# Visualise the dots representing the locations of the transcripts on the tissue slide
+# Visualise the locations of the transcripts on the tissue slide
 ImageDimPlot(xenium)
+```
+
+We can also visualise the number of features measured in each location using `ImageFeaturePlot()`:
+
+```{r}
+#| label: visualise-xenium-nfeature
 
 # Visualise the transcript density on the tissue slide
 ImageFeaturePlot(
@@ -373,7 +361,58 @@ ImageFeaturePlot(
 )
 ```
 
--->
+This shows that while the spatial resolution is very high, the number of features measured per location is low compared to other spatial transcriptomics technologies.
+In this case only `r nrow(xenium)` genes were measured, and the visualisation above shows the scale only going up to a maximum of 150 features detected per position.
+
+We can compare the range of features detected between the two technologies here:
+
+```{r}
+#| label: compare-nfeature
+
+# Summary of number of detected features
+summary(xenium$nFeature_Xenium)
+summary(visium$nFeature_Spatial)
+```
+
+You will explore this dataset more fully in the [_Xenium: Human Melanoma_ case study](11-XeniumExample.qmd).
+
+::: {.callout-warning}
+#### Xenium data is large!
+
+Xenium datasets can be quite large, so make sure you have enough memory available to load the data.
+If you encounter memory issues, consider using a machine with more RAM or using a subset of the data for analysis.
+:::
+
+## Example MERFISH file
+
+As an example, we provide a pre-processed MERFISH file of the Human heart, which has been saved as a Seurat object:
+
+```{r}
+#| label: load-preprocessed-merfish
+
+# Load the preprocessed MERFISH dataset
+merfish <- readRDS("data/human_heart_merfish/overall_merfish.rds")
+
+# Examine the object
+merfish
+```
+
+MERFISH data does not have an associated image with it, and is stored as if it was a single-cell dataset.
+The spatial information is represented as a dimensionality reduction slot, which we can visualise with the `DimPlot()` function.\
+
+```{r}
+#| label: visualise-merfish
+
+# Visualize the structure of the heart in the MERFISH data
+DimPlot(
+  merfish,
+  reduction = "spatial",
+  group.by = "communities",
+  cols = paletteer_d("ggthemes::Tableau_20")
+)
+```
+
+This is just a quick look at a MERFISH dataset, you will explore this dataset more in the [_MERFISH: Human Heart_ case study](12-MerfishExample.qmd).
 
 ## Summary
 
