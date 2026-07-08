@@ -1,7 +1,4 @@
----
-title: "Data & Setup"
-number-sections: false
----
+# Data & Setup {.unnumbered}
 
 <!--
 Note for Training Developers:

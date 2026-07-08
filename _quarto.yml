@@ -60,11 +60,13 @@ book:
         href: https://bioinfotraining.bio.cam.ac.uk/
     title: "Spatial transcriptomics analysis"
   chapters:
-    - part: "Welcome"
+    - part: "Getting Started"
       chapters:
         - text: "Overview"
           href: index.md
         - text: "Data & Setup"
           href: setup.md
-  appendices: 
+        - text: "Slides"
+          href: materials/slides.md
+  appendices:
     - href: versions.md

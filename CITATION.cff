@@ -11,12 +11,18 @@ message: >-
   the information in your own work.
 type: dataset
 authors:
-  - given-names: Adam 
+  - given-names: Adam
     family-names: Reid
     affiliation: Gurdon Institute
     website: https://www.gurdon.cam.ac.uk/scientific-facilities/bioinformatics/
     orcid: 'https://orcid.org/0000-0002-5926-7768'
     alias: 'conceptualisation; primary author; data curation; coding'
+  - given-names: Hugo
+    family-names: Tavares
+    affiliation: Cambridge Centre for Research Informatics Training
+    website: 'https://bioinfotraining.bio.cam.ac.uk/staff/hugo-tavares-phd'
+    orcid: 'https://orcid.org/0000-0001-9373-2726'
+    alias: 'writing - original draft; conceptualisation; software'
   - given-names: Sina
     family-names: Beier
     affiliation: Gurdon Institute

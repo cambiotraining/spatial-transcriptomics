@@ -1,8 +1,4 @@
----
-title: "Spatial transcriptomics analysis"
-date: today
-number-sections: false
----
+# Spatial transcriptomics analysis {.unnumbered}
 
 ## Overview
 

@@ -24,3 +24,5 @@ _site
 /.luarc.json
 
 **/*.quarto_ipynb
+
+snowflake.log
