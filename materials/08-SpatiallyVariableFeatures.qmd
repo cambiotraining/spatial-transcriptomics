@@ -63,14 +63,14 @@ As a reminder, this object was created by:
 
 ## Overview
 
-In the [dimensionality reduction chapter](03-DimensionalityReduction.qmd), we selected highly variable genes (HVGs) using a non-spatial approach.
+In the [dimensionality reduction chapter](05-DimensionalityReduction.qmd), we selected highly variable genes (HVGs) using a non-spatial approach.
 That approach treats spots as independent observations and does not use their positions in the tissue.
 
 Here, we use spatially aware feature selection to identify **spatially variable genes (SVGs)**, i.e. genes whose expression changes across the tissue.
 
 SVGs are useful for at least two reasons:
 
-- They complement [cluster marker gene analysis](04b-ClusterMarkerGenes.qmd) by highlighting genes associated with spatial tissue structure and local biological processes.
+- They complement [cluster marker gene analysis](07-ClusterMarkerGenes.qmd) by highlighting genes associated with spatial tissue structure and local biological processes.
 - They can be used as input features for PCA, which can then influence downstream analyses such as UMAP, t-SNE and graph-based clustering.
 
 Many SVG methods adapt ideas from spatial statistics.
@@ -136,7 +136,7 @@ Patterns that occur in several genes may indicate robust tissue structure, rathe
 You will often see partial overlap between SVG patterns and cluster boundaries.
 That is expected: Leiden clustering here is graph-based and does not explicitly model spatial coordinates, but it can still recover biologically spatially organised cell populations.
 
-We come back to spatially aware clustering in [08-TissueArchitecture.qmd](08-TissueArchitecture.qmd), where we compare those clusters and their marker genes with the SVGs identified here.
+We come back to spatially aware clustering in [09-SpatialClustering.qmd](09-SpatialClustering.qmd), where we compare those clusters and their marker genes with the SVGs identified here.
 
 ::: {.callout-note collapse="true"}
 #### Accessing full Moran's I results

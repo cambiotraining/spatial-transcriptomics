@@ -367,7 +367,7 @@ So far, we applied:
 In both cases, we regressed out mitochondrial percentage as a confounder.
 
 To compare methods, we run the same quick clustering workflow for each normalisation and visualise the cluster labels on the tissue image.
-We will cover clustering in depth in a [later chapter](04-Clustering.qmd).
+We will cover clustering in depth in a [later chapter](06-Clustering.qmd).
 Here the goal is method comparison, so don't worry too much about the details of the implementation.
 
 ```{r}

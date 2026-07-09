@@ -406,7 +406,7 @@ For example, old cluster 1 has been split into three clusters (1, 10 and 11), an
 ::: {.callout-note collapse="true"}
 #### Agreement between clusters using Adjusted Rand Index
 
-In the [Normalisation chapter](02b-Normalisation.qmd), we introduced the Adjusted Rand Index (ARI) as a measure of agreement between two clusterings.
+In the [Normalisation chapter](04-Normalisation.qmd), we introduced the Adjusted Rand Index (ARI) as a measure of agreement between two clusterings.
 We can use this to quantify how similar the clusterings are across algorithms and resolutions.
 
 ```{r}
@@ -459,7 +459,7 @@ You can use marker gene analysis (covered in the next section) to interpret what
 One important limitation of graph-based clustering, which we've already seen, is that it does not make use of spatial information.
 All spots are treated independently based only on their expression similarity.
 As an alternativel, spatially-aware methods explicitly incorporate spatial proximity to calculate clusterings.
-We cover spatially-aware clustering with BANKSY in a [follow-up chapter](08-TissueArchitecture.qmd).
+We cover spatially-aware clustering with BANKSY in a [follow-up chapter](09-SpatialClustering.qmd).
 
 ## Exporting the Object
 

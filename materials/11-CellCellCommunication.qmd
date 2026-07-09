@@ -273,7 +273,7 @@ We now have `r nrow(cell_chat@data.signaling)` genes available for the CCC analy
 ### Variable Genes and Interactions
 
 Before inferring the CCC network, CellChat identifies overexpressed genes in each group.
-This is effectively a differential expression test between the labels we defined above (`first_type` here), similar to the [cluster marker genes analysis](04b-ClusterMarkerGenes.qmd) we performed earlier.
+This is effectively a differential expression test between the labels we defined above (`first_type` here), similar to the [cluster marker genes analysis](07-ClusterMarkerGenes.qmd) we performed earlier.
 CellChat then identifies ligand-receptor interactions where both partners are variable.
 Together, these steps focus the analysis on genes and interactions that are more likely to contribute to communication between cell populations.
 

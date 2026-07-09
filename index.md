@@ -1,3 +1,7 @@
+---
+pagetitle: "Spatial transcriptomics analysis"
+---
+
 # Spatial transcriptomics analysis {.unnumbered}
 
 ## Overview

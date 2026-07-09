@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
 knitr::opts_knit$set(root.dir = here::here("course_files"))
 ```
 
-This appendix gathers the scran-based workflow previously referenced in the [Normalisation](02b-Normalisation.qmd) and [Dimensionality Reduction](03-DimensionalityReduction.qmd) chapters.
+This appendix gathers the scran-based workflow previously referenced in the [Normalisation](04-Normalisation.qmd) and [Dimensionality Reduction](05-DimensionalityReduction.qmd) chapters.
 The main course follows standard Seurat workflows, but this document provides a practical extension when you want pooled size-factor normalisation.
 
 ## Setup
@@ -124,7 +124,7 @@ visium <- visium |>
 
 ## HVG selection on the Scran assay
 
-In [Dimensionality Reduction](03-DimensionalityReduction.qmd), highly variable genes (HVGs) were selected using Seurat defaults on standard assays.
+In [Dimensionality Reduction](05-DimensionalityReduction.qmd), highly variable genes (HVGs) were selected using Seurat defaults on standard assays.
 For the `Scran` assay, you can use scran's variance modelling approach directly on log-normalised data:
 
 ```{r}

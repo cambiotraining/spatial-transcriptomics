@@ -2,22 +2,22 @@ book:
   chapters:
     - part: "Detailed Workflow"
       chapters:
-        - materials/00-QualityControl.qmd
-        - materials/01-LoadingData.qmd
-        - materials/02a-Filtering.qmd
-        - materials/02b-Normalisation.qmd
-        - materials/03-DimensionalityReduction.qmd
-        - materials/04-Clustering.qmd
-        - materials/04b-ClusterMarkerGenes.qmd
-        - materials/07-SpatiallyVariableFeatures.qmd
-        - materials/08-TissueArchitecture.qmd
-        - materials/05-Deconvolution.qmd
-        - materials/09-CellCellInteraction.qmd
+        - materials/01-SpaceRanger.qmd
+        - materials/02-DataImport.qmd
+        - materials/03-Filtering.qmd
+        - materials/04-Normalisation.qmd
+        - materials/05-DimensionalityReduction.qmd
+        - materials/06-Clustering.qmd
+        - materials/07-ClusterMarkerGenes.qmd
+        - materials/08-SpatiallyVariableFeatures.qmd
+        - materials/09-SpatialClustering.qmd
+        - materials/10-Deconvolution.qmd
+        - materials/11-CellCellCommunication.qmd
     - part: "Case Studies"
       chapters:
-        - materials/10-VisiumExample.qmd
-        - materials/11-XeniumExample.qmd
-        - materials/12-MerfishExample.qmd
+        - materials/12-VisiumZebrafishHead.qmd
+        - materials/13-XeniumHumanMelanoma.qmd
+        - materials/14-MerfishHumanHeart.qmd
     - part: "Extended Materials"
       chapters:
-        - materials/06-Visualisation.qmd
+        - materials/15-Visualisation.qmd

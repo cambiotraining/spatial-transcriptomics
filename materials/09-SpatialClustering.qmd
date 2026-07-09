@@ -63,7 +63,7 @@ As a reminder, this object was created by:
 
 ## Overview
 
-In our [previous clustering chapter](04-Clustering.qmd), we grouped spots based solely on transcriptional similarity, without considering spatial organisation.
+In our [previous clustering chapter](06-Clustering.qmd), we grouped spots based solely on transcriptional similarity, without considering spatial organisation.
 
 **Tissue architecture** describes the spatial organisation and arrangement of cell types within tissue.
 To capture this, we need clustering methods that incorporate spatial information alongside gene expression.

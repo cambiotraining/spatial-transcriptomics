@@ -374,7 +374,7 @@ summary(xenium$nFeature_Xenium)
 summary(visium$nFeature_Spatial)
 ```
 
-You will explore this dataset more fully in the [_Xenium: Human Melanoma_ case study](11-XeniumExample.qmd).
+You will explore this dataset more fully in the [_Xenium: Human Melanoma_ case study](13-XeniumHumanMelanoma.qmd).
 
 ::: {.callout-warning}
 #### Xenium data is large!
@@ -412,7 +412,7 @@ DimPlot(
 )
 ```
 
-This is just a quick look at a MERFISH dataset, you will explore this dataset more in the [_MERFISH: Human Heart_ case study](12-MerfishExample.qmd).
+This is just a quick look at a MERFISH dataset, you will explore this dataset more in the [_MERFISH: Human Heart_ case study](14-MerfishHumanHeart.qmd).
 
 ## Summary
 

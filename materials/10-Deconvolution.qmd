@@ -705,7 +705,7 @@ These spots form a narrow spatial band, often close to a single line of spots.
 That pattern is consistent with layer 6b neurons occupying a thin cortical layer.
 
 This example also shows why analysis resolution matters.
-In the previous [spatial clustering chapter](08-TissueArchitecture.qmd), BANKSY used `k_geom = 18`, averaging spatial features across 18 neighbouring spots (two rings of spots around each spot).
+In the previous [spatial clustering chapter](09-SpatialClustering.qmd), BANKSY used `k_geom = 18`, averaging spatial features across 18 neighbouring spots (two rings of spots around each spot).
 For very narrow structures, this averaging can dilute local signals and make small sub-domains harder to identify.
 
 This again highlights the importance of **biological knowledge** of your tissue and considering the **resolution of the technology** used.

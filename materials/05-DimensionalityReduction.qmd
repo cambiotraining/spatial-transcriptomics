@@ -108,7 +108,7 @@ head(VariableFeatures(visium))
 ```
 
 The object currently has 3,000 highly variable genes.
-These were selected when we ran `SCTransform()` in the [Normalisation](02b-Normalisation.qmd) chapter.
+These were selected when we ran `SCTransform()` in the [Normalisation](04-Normalisation.qmd) chapter.
 
 The `?SCTransform` documentation shows an option called `variable.features.n`.
 To change the number of variable genes used downstream, we can re-run the normalisation with a new value.

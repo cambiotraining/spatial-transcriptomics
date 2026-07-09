@@ -24,7 +24,7 @@ The workflow has two linked analysis pipelines:
 - The **imaging pipeline** identifies fiducial markers (the positional landmarks on Visium slides), detects tissue boundaries, and aligns microscope and CytAssist images if applicable.
 - These two analysis pipelines are then merged so that downstream expression matrices keep transcripts from tissue-covered capture spots.
 
-One main output is a spatial gene expression matrix in `.h5` format (used in [Data Import](01-LoadingData.qmd)).
+One main output is a spatial gene expression matrix in `.h5` format (used in [Data Import](02-DataImport.qmd)).
 Space Ranger also generates a quality report, which is the focus of this chapter.
 Some sequencing facilities run Space Ranger before delivering data, so the report interpretation is often the first QC task in our analysis.
 
