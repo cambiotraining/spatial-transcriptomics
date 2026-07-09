@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>3&nbsp; QC and Filtering</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../materials/04-Normalisation.html" rel="next">
+<link href="../materials/02-DataImport.html" rel="prev">
+<link href="../site_libs/quarto-contrib/quarto-project/cambiotraining/crit-format/img/university-of-cambridge-favicon.ico" rel="icon">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-bb373a9d6c60814f0d90357058c9134b.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-contrib/iconify-3.0.0/iconify-icon.min.js"></script>
+<script src="../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="../site_libs/quarto-contrib/quarto-project/cambiotraining/crit-format/img/university_crest_reversed.png" alt="" class="navbar-logo light-content">
+    <img src="../site_libs/quarto-contrib/quarto-project/cambiotraining/crit-format/img/university_crest_reversed.png" alt="" class="navbar-logo dark-content">
+    </a>
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Spatial transcriptomics analysis</span>
+    </a>
+  </div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="https://github.com/cambiotraining/spatial-transcriptomics"> 
+<span class="menu-text"><iconify-icon role="img" inline="" icon="fa6-brands:github" style="font-size: 1.25em;" aria-label="Icon github from fa6-brands Iconify.design set." title="CRIT GitHub"></iconify-icon></span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://bsky.app/profile/bioinfocambs.bsky.social"> 
+<span class="menu-text"><iconify-icon role="img" inline="" icon="fa6-brands:bluesky" style="font-size: 1.25em;" aria-label="Icon bluesky from fa6-brands Iconify.design set." title="CRIT Bluesky"></iconify-icon></span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://genomic.social/@BioInfoCambs"> 
+<span class="menu-text"><iconify-icon role="img" inline="" icon="fa6-brands:mastodon" style="font-size: 1.25em;" aria-label="Icon mastodon from fa6-brands Iconify.design set." title="CRIT Mastodon"></iconify-icon></span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://bioinfotraining.bio.cam.ac.uk/"> 
+<span class="menu-text"><iconify-icon role="img" inline="" icon="mdi:web" style="font-size: 1.25em;" aria-label="Icon web from mdi Iconify.design set." title="CRIT Website"></iconify-icon></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    
+    <style>
+    #version-dropdown {
+      list-style: none;
+    }
+    </style>
+    
+
+  <li id="version-dropdown" class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-versions" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+      <span class="menu-text">Version:</span> <span class="version-badge" aria-hidden="true">Latest</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-versions">
+      <li>
+        <a class="dropdown-item" href="/spatial-transcriptomics/index.html">
+          <span class="dropdown-text">Latest</span>
+        </a>
+      </li>
+      <li>
+        <a class="dropdown-item" href="/spatial-transcriptomics/archive/2026.06.15/index.html">
+          <span class="dropdown-text">2026.06.15</span>
+        </a>
+      </li>
+    </ul>
+  </li>
+</nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <a class="flex-grow-1 no-decor" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+          <h1 class="quarto-secondary-nav-title"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">QC and Filtering</span></h1>
+        </a>     
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Getting Started</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Overview</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../setup.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Data &amp; Setup</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/slides.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Slides</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Detailed Workflow</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/01-SpaceRanger.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Space Ranger Report</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/02-DataImport.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Data Import</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/03-Filtering.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">QC and Filtering</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/04-Normalisation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Normalisation</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/05-DimensionalityReduction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Dimensionality Reduction</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/06-Clustering.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Graph-Based Clustering</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/07-ClusterMarkerGenes.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Cluster Marker Genes</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/08-SpatiallyVariableFeatures.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Spatially Variable Features</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/09-SpatialClustering.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Spatial Clustering</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/10-Deconvolution.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Deconvolution</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/11-CellCellCommunication.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Cell-Cell Communication</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Case Studies</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/12-VisiumZebrafishHead.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Visium HD: Zebrafish Head</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/13-XeniumHumanMelanoma.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Xenium: Human Melanoma</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/14-MerfishHumanHeart.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">MERFISH: Human Heart</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">Extended Materials</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../materials/15-Visualisation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Visualisation of spatial transcriptomics data</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../versions.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Archived Versions</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#data-exploration" id="toc-data-exploration" class="nav-link active" data-scroll-target="#data-exploration"><span class="header-section-number">3.1</span> Data Exploration</a></li>
+  <li><a href="#qc-metrics" id="toc-qc-metrics" class="nav-link" data-scroll-target="#qc-metrics"><span class="header-section-number">3.2</span> QC Metrics</a></li>
+  <li><a href="#visualising-qc-metrics" id="toc-visualising-qc-metrics" class="nav-link" data-scroll-target="#visualising-qc-metrics"><span class="header-section-number">3.3</span> Visualising QC Metrics</a></li>
+  <li><a href="#defining-filtering-thresholds" id="toc-defining-filtering-thresholds" class="nav-link" data-scroll-target="#defining-filtering-thresholds"><span class="header-section-number">3.4</span> Defining Filtering Thresholds</a>
+  <ul class="collapse">
+  <li><a href="#global-thresholds" id="toc-global-thresholds" class="nav-link" data-scroll-target="#global-thresholds"><span class="header-section-number">3.4.1</span> Global thresholds</a></li>
+  <li><a href="#spatially-aware-thresholds" id="toc-spatially-aware-thresholds" class="nav-link" data-scroll-target="#spatially-aware-thresholds"><span class="header-section-number">3.4.2</span> Spatially aware thresholds</a></li>
+  </ul></li>
+  <li><a href="#applying-filters" id="toc-applying-filters" class="nav-link" data-scroll-target="#applying-filters"><span class="header-section-number">3.5</span> Applying Filters</a></li>
+  <li><a href="#exporting-filtered-data" id="toc-exporting-filtered-data" class="nav-link" data-scroll-target="#exporting-filtered-data"><span class="header-section-number">3.6</span> Exporting Filtered Data</a></li>
+  <li><a href="#exercises" id="toc-exercises" class="nav-link" data-scroll-target="#exercises"><span class="header-section-number">3.7</span> Exercises</a></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary"><span class="header-section-number">3.8</span> Summary</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title d-none d-lg-block"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">QC and Filtering</span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Learning Objectives
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ul>
+<li>Calculate library size, number of detected genes, and mitochondrial percentage as QC metrics for Visium data.</li>
+<li>Visualise QC metric distributions and their spatial patterns to identify low-quality spots.</li>
+<li>Define global filtering thresholds using hand-picked and quantile-based cutoffs.</li>
+<li>Interpret spatial QC plots to assess whether problematic spots reflect tissue damage or biological variation.</li>
+<li>Apply spot-level filters to the spatial object and save the result.</li>
+</ul>
+</div>
+</div>
+<section id="data-exploration" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="data-exploration"><span class="header-section-number">3.1</span> Data Exploration</h2>
+<p>Quality control of spatial transcriptomics data is essential for producing reliable results in downstream steps. In this chapter, we work with a Visium mouse brain dataset <a href="https://www.10xgenomics.com/datasets/mouse-brain-serial-section-2-sagittal-anterior-1-standard">from 10x Genomics</a>.</p>
+<p>We start by loading the required libraries and reading the data into a Seurat object.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load libraries</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(Seurat) <span class="co"># single-cell and spatial analysis toolkit</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sparseMatrixStats)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(paletteer) <span class="co"># colour palettes</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2) <span class="co"># plotting</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(patchwork) <span class="co"># combining plots</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Load the spatial transcriptomics data</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>visium <span class="ot">&lt;-</span> <span class="fu">Load10X_Spatial</span>(</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="st">"data/mouse_sagittal_visium_v1"</span>,</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">filename =</span> <span class="st">"V1_Mouse_Brain_Sagittal_Anterior_Section_2_filtered_feature_bc_matrix.h5"</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Before we start quality control, it helps to <strong>understand the tissue you are working with</strong>. Ask yourself what cell types or anatomical regions you expect to see in this slice.</p>
+<p>10x describes this mouse brain dataset as:</p>
+<blockquote class="blockquote">
+<p>Tissue sections of 10 µm thickness from a sagittal slice of the anterior</p>
+</blockquote>
+<p>We can visualise the raw image to see which parts of the brain were captured:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Make spots invisible and plot the histological image</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">SpatialPlot</span>(</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  visium,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">alpha =</span> <span class="dv">0</span>, <span class="co"># make spots invisible</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">image.alpha =</span> <span class="dv">1</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">crop =</span> <span class="cn">FALSE</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>) <span class="sc">+</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><a href="03-Filtering_files/figure-html/plot-histological-image-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1"><img src="03-Filtering_files/figure-html/plot-histological-image-1.png" class="img-fluid figure-img" width="960"></a></p>
+</figure>
+</div>
+</div>
+</div>
+<p>You can compare this image with a slice from the <a href="https://mouse.brain-map.org/experiment/thumbnails/100042147?image_type=atlas">mouse brain atlas from the Allen Institute for Brain Science</a>.</p>
+<p>Alternatively, the diagram below shows a simplified sagittal view of the mouse brain:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://cdn.prod.website-files.com/621e95f9ac30687a56e4297e/64a8d42517d0ad175c9ae32c_V2_1624981248450_06f0410a-bd7c-454e-a9ae-c73a1e2e52be.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Image source: bioRender"><img src="https://cdn.prod.website-files.com/621e95f9ac30687a56e4297e/64a8d42517d0ad175c9ae32c_V2_1624981248450_06f0410a-bd7c-454e-a9ae-c73a1e2e52be.png" class="img-fluid figure-img" alt="Image source: bioRender"></a></p>
+<figcaption>Image source: <a href="https://www.biorender.com/template/mouse-brain-anatomy-sagittal-view">bioRender</a></figcaption>
+</figure>
+</div>
+<p>If we compare our slice with this diagram or the atlas linked above, we can see that we are likely imaging:</p>
+<ul>
+<li>The main olfactory bulb, appearing as a distinct circular-looking “bulge” on the left</li>
+<li>The cerebral cortex</li>
+<li>The anterior olfactory nucleus</li>
+<li>The ventral striatum</li>
+<li>The caudate putamen</li>
+<li>The basal forebrain</li>
+<li>Maybe also some of the hippocampus</li>
+</ul>
+<p>It is difficult (at least for a non-expert eye) to identify all of these regions directly from the histological image. Still, this sets the expectation for which cell types and clusters we may see later in the data.</p>
+<p>This context also matters for quality control. If quality issues cluster in particular regions, those patterns may reflect tissue damage, capture artefacts, or genuine biological structure.</p>
+<p>From the raw image, we can also look for signs of:</p>
+<ul>
+<li>Tissue tearing or folding</li>
+<li>Areas with low cell density</li>
+<li>Areas with high levels of debris or contamination</li>
+</ul>
+<p>These aspects may correlate with low-quality spots that get removed removed during filtering.</p>
+</section>
+<section id="qc-metrics" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="qc-metrics"><span class="header-section-number">3.2</span> QC Metrics</h2>
+<p>Common quality control metrics include:</p>
+<ul>
+<li><strong>Library size:</strong> The total number of counts per spot.</li>
+<li><strong>Detected genes:</strong> The number of unique genes per spot, that is, genes with at least one count.</li>
+<li><strong>Mitochondrial percentage:</strong> The percentage of counts assigned to mitochondrial genes. A high fraction of mitochondrial counts may indicate tissue damage. When cells are damaged, cytoplasmic RNA can leak out more easily than mitochondrial RNA, which tends to remain enriched inside the remaining cellular material.</li>
+</ul>
+<p>Space Ranger already calculates library size and the number of detected genes, so these values are present in the Seurat object metadata:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Fetch the metadata and look at the first few rows</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(visium[[]])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                      orig.ident nCount_Spatial nFeature_Spatial
+AAACAAGTATCTCCCA-1 SeuratProject          18286             4736
+AAACACCAATAACTGC-1 SeuratProject           9311             3735
+AAACAGAGCGACTCCT-1 SeuratProject          36450             7285
+AAACAGCTTTCAGAAG-1 SeuratProject          30800             7298
+AAACAGGGTCTATATT-1 SeuratProject          27617             6892
+AAACATTTCCCGGATT-1 SeuratProject          38072             7476</code></pre>
+</div>
+</div>
+<p>For completeness, the code below shows how to calculate these two metrics from the raw counts. This is useful if you work with a dataset that does not already include them.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># library size</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>visium[[<span class="st">"nCount_Spatial"</span>]] <span class="ot">&lt;-</span> <span class="fu">colSums</span>(visium[[<span class="st">"Spatial"</span>]]<span class="sc">$</span>counts)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co"># number of detected genes</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>visium[[<span class="st">"nFeature_Spatial"</span>]] <span class="ot">&lt;-</span> <span class="fu">colSums</span>(visium[[<span class="st">"Spatial"</span>]]<span class="sc">$</span>counts <span class="sc">&gt;</span> <span class="dv">0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>You could use a stricter threshold for what counts as a detected gene. Here, we count any gene with at least one count (<code>&gt; 0</code>), but you could require a higher count threshold if you prefer (e.g.&nbsp;<code>&gt; 2</code> for at least 3 counts).</p>
+<p>To calculate the mitochondrial percentage, we need either a list of mitochondrial gene names or a pattern that matches those names. In this dataset, mitochondrial genes are prefixed with <code>mt-</code>, so we can identify them with <code>PercentageFeatureSet()</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># add mitochondrial percentage to metadata</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>visium[[<span class="st">"percentMt_Spatial"</span>]] <span class="ot">&lt;-</span> <span class="fu">PercentageFeatureSet</span>(</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  visium,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">assay =</span> <span class="st">"Spatial"</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">pattern =</span> <span class="st">"^mt-"</span> <span class="co"># the '^' indicates we want to match the start of the string</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>This function can calculate the percentage of any gene set, not just mitochondrial genes. For example, you could use it for ribosomal genes, chloroplast genes in plant datasets, or any other gene set that matters for your analysis.</p>
+<p>We can confirm that the new QC metrics have been added to the metadata:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Confirm that the new QC metrics have been added to metadata</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(visium[[]])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                      orig.ident nCount_Spatial nFeature_Spatial
+AAACAAGTATCTCCCA-1 SeuratProject          18286             4736
+AAACACCAATAACTGC-1 SeuratProject           9311             3735
+AAACAGAGCGACTCCT-1 SeuratProject          36450             7285
+AAACAGCTTTCAGAAG-1 SeuratProject          30800             7298
+AAACAGGGTCTATATT-1 SeuratProject          27617             6892
+AAACATTTCCCGGATT-1 SeuratProject          38072             7476
+                   percentMt_Spatial
+AAACAAGTATCTCCCA-1         15.432571
+AAACACCAATAACTGC-1         14.391580
+AAACAGAGCGACTCCT-1         13.242798
+AAACAGCTTTCAGAAG-1          9.681818
+AAACAGGGTCTATATT-1         11.721041
+AAACATTTCCCGGATT-1         10.532675</code></pre>
+</div>
+</div>
+</section>
+<section id="visualising-qc-metrics" class="level2" data-number="3.3">
+<h2 data-number="3.3" class="anchored" data-anchor-id="visualising-qc-metrics"><span class="header-section-number">3.3</span> Visualising QC Metrics</h2>
+<p>Now that we have calculated the QC metrics, we can inspect their distributions to see the range of values in the data.</p>
+<p><code>VlnPlot()</code> provides a quick way to do this in Seurat:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualise QC metrics</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">VlnPlot</span>(</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  visium,</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">features =</span> <span class="fu">c</span>(<span class="st">"nCount_Spatial"</span>, <span class="st">"nFeature_Spatial"</span>, <span class="st">"percentMt_Spatial"</span>)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><a href="03-Filtering_files/figure-html/filter-low-quality-cells-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3"><img src="03-Filtering_files/figure-html/filter-low-quality-cells-1.png" class="img-fluid figure-img" width="960"></a></p>
+</figure>
+</div>
+</div>
+</div>
+<p>We can also summarise the averages and ranges:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Summary of QC metrics</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(visium[[<span class="fu">c</span>(<span class="st">"nCount_Spatial"</span>, <span class="st">"nFeature_Spatial"</span>, <span class="st">"percentMt_Spatial"</span>)]])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> nCount_Spatial  nFeature_Spatial percentMt_Spatial
+ Min.   :  207   Min.   : 166     Min.   : 3.964   
+ 1st Qu.:14381   1st Qu.:4270     1st Qu.:13.398   
+ Median :20152   Median :5342     Median :16.231   
+ Mean   :20724   Mean   :5173     Mean   :16.693   
+ 3rd Qu.:26794   3rd Qu.:6231     3rd Qu.:19.208   
+ Max.   :61430   Max.   :8689     Max.   :36.596   </code></pre>
+</div>
+</div>
+<p>From this quick exploration, we can see that:</p>
+<ul>
+<li>Some spots have very low total counts and detected genes relative to the rest of the dataset.</li>
+<li>Several spots have a high fraction of mitochondrial genes, which suggests possible tissue damage or poor-quality material.</li>
+</ul>
+<p>Library size and the number of detected genes are often correlated. That pattern is expected because deeper sequencing usually increases the chance of detecting more genes:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualise correlation between library size and detected genes</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(visium<span class="sc">$</span>nCount_Spatial, visium<span class="sc">$</span>nFeature_Spatial)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><a href="03-Filtering_files/figure-html/ncount-vs-detected-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-4"><img src="03-Filtering_files/figure-html/ncount-vs-detected-1.png" class="img-fluid figure-img" width="960"></a></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Spots with a low library size are also likely to have very few detected genes.</p>
+<p>Spots with unusually high numbers of detected genes may indicate doublets or multiplets, which you may want to filter out. The expected range for detected genes also depends on the tissue, experimental conditions, species, and technology.</p>
+<p>We can also visualise these metrics on the tissue image:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualise QC metrics on spatial plot</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">SpatialPlot</span>(</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  visium,</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">features =</span> <span class="fu">c</span>(<span class="st">"nCount_Spatial"</span>, <span class="st">"nFeature_Spatial"</span>, <span class="st">"percentMt_Spatial"</span>),</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">ncol =</span> <span class="dv">2</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><a href="03-Filtering_files/figure-html/spatial-qc-metrics-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-5"><img src="03-Filtering_files/figure-html/spatial-qc-metrics-1.png" class="img-fluid figure-img" width="960"></a></p>
+</figure>
+</div>
+</div>
+</div>
+<p>This reveals several patterns across the tissue:</p>
+<ul>
+<li>Some peripheral areas with high mitochondrial percentage also have low total counts, which suggests low-quality spots and possibly damaged tissue.</li>
+<li>Total counts and detected genes follow a similar pattern, which is expected because higher counts usually make more genes detectable.</li>
+<li>In the olfactory bulb, the centre of the tissue has higher counts and more detected genes than the outside. This could reflect a technical artefact, but it might also be biological. For example, the brain atlas suggests that fibre tracts may be present in this region.</li>
+<li>There is a clear anti-correlation between detected genes and mitochondrial percentage in the same olfactory bulb region. That pattern could be technical or biological.</li>
+</ul>
+<p>We’re not experts in brain biology, and so we cannot tell from the QC plots alone whether these patterns are technical artefacts or true biology. But this uncertainty is exactly why spatial QC plots are useful: they show whether suspicious metrics cluster in particular tissue regions and help us decide how to apply our filters.</p>
+<p>Filtering will also introduce spatial bias, because low-quality spots are often concentrated in specific parts of the tissue rather than spread evenly across the slide.</p>
+</section>
+<section id="defining-filtering-thresholds" class="level2" data-number="3.4">
+<h2 data-number="3.4" class="anchored" data-anchor-id="defining-filtering-thresholds"><span class="header-section-number">3.4</span> Defining Filtering Thresholds</h2>
+<p>Unfortunately, there are no fixed rules for defining filtering thresholds. In practice, two broad approaches are used:</p>
+<ul>
+<li><strong>Global thresholds:</strong> Apply the same threshold across the entire dataset, regardless of spatial context. You can choose these thresholds from the distributions you explored earlier. For example:
+<ul>
+<li>remove spots with fewer than 1,000 counts, fewer than 500 detected genes, or more than 30% mitochondrial genes;</li>
+<li>remove spots below the 1st percentile for total counts and detected genes, and above the 99th percentile for mitochondrial genes.</li>
+</ul></li>
+<li><strong>Spatially aware thresholds:</strong> These methods calculate QC metrics while taking local variation in the tissue into account.</li>
+</ul>
+<section id="global-thresholds" class="level3" data-number="3.4.1">
+<h3 data-number="3.4.1" class="anchored" data-anchor-id="global-thresholds"><span class="header-section-number">3.4.1</span> Global thresholds</h3>
+<p>When you choose a threshold, always visualise it alongside the respective distribution. That lets you see how many spots would be removed and where the filter falls.</p>
+<p>You can either hand-pick a threshold or use a quantile of the distribution. The histograms below show example cutoffs based on hand-picked thresholds in red and quantile-based thresholds in blue.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># set up a 3x1 plotting area</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">3</span>, <span class="dv">1</span>))</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="co"># total count thresholds</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>  visium<span class="sc">$</span>nCount_Spatial,</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">breaks =</span> <span class="dv">50</span>,</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">main =</span> <span class="st">"Distribution of total counts"</span>,</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">xlab =</span> <span class="st">"Total counts"</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="dv">1000</span>, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="fu">quantile</span>(visium<span class="sc">$</span>nCount_Spatial, <span class="fl">0.01</span>), <span class="at">col =</span> <span class="st">"blue"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="co"># number of detected genes thresholds</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>  visium<span class="sc">$</span>nFeature_Spatial,</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">breaks =</span> <span class="dv">50</span>,</span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">main =</span> <span class="st">"Distribution of detected genes"</span>,</span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>  <span class="at">xlab =</span> <span class="st">"Number of detected genes"</span></span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="dv">500</span>, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="fu">quantile</span>(visium<span class="sc">$</span>nFeature_Spatial, <span class="fl">0.01</span>), <span class="at">col =</span> <span class="st">"blue"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a><span class="co"># percentage of mitochondrial genes thresholds</span></span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(</span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>  visium<span class="sc">$</span>percentMt_Spatial,</span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a>  <span class="at">breaks =</span> <span class="dv">50</span>,</span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a>  <span class="at">main =</span> <span class="st">"Distribution of mitochondrial percentage"</span>,</span>
+<span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a>  <span class="at">xlab =</span> <span class="st">"Percentage of mitochondrial genes"</span></span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb14-31"><a href="#cb14-31" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="dv">30</span>, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb14-32"><a href="#cb14-32" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="fu">quantile</span>(visium<span class="sc">$</span>percentMt_Spatial, <span class="fl">0.99</span>), <span class="at">col =</span> <span class="st">"blue"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><a href="03-Filtering_files/figure-html/define-thresholds-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-6"><img src="03-Filtering_files/figure-html/define-thresholds-1.png" class="img-fluid figure-img" width="960"></a></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Which threshold is correct? There is no single right answer. Before applying any filter, we should <strong>visualise which spots would be removed and where they are located</strong>.</p>
+<p>First, we add metadata columns that mark the spots removed by each threshold.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># add indicator columns for each filter</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>visium[[<span class="st">"nCountFiltered"</span>]] <span class="ot">&lt;-</span> visium<span class="sc">$</span>nCount_Spatial <span class="sc">&lt;=</span> <span class="dv">1000</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>visium[[<span class="st">"percentMtFiltered"</span>]] <span class="ot">&lt;-</span> visium<span class="sc">$</span>percentMt_Spatial <span class="sc">&gt;=</span> <span class="dv">30</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>visium[[<span class="st">"nFeatureFiltered"</span>]] <span class="ot">&lt;-</span> visium<span class="sc">$</span>nFeature_Spatial <span class="sc">&lt;=</span> <span class="dv">500</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a><span class="co"># also add a combined filter column</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>visium[[<span class="st">"combinedFiltered"</span>]] <span class="ot">&lt;-</span> visium<span class="sc">$</span>nCountFiltered <span class="sc">|</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>  visium<span class="sc">$</span>percentMtFiltered <span class="sc">|</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>  visium<span class="sc">$</span>nFeatureFiltered</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a><span class="co"># this adds TRUE/FALSE columns to metadata</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(visium[[]])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                      orig.ident nCount_Spatial nFeature_Spatial
+AAACAAGTATCTCCCA-1 SeuratProject          18286             4736
+AAACACCAATAACTGC-1 SeuratProject           9311             3735
+AAACAGAGCGACTCCT-1 SeuratProject          36450             7285
+AAACAGCTTTCAGAAG-1 SeuratProject          30800             7298
+AAACAGGGTCTATATT-1 SeuratProject          27617             6892
+AAACATTTCCCGGATT-1 SeuratProject          38072             7476
+                   percentMt_Spatial nCountFiltered percentMtFiltered
+AAACAAGTATCTCCCA-1         15.432571          FALSE             FALSE
+AAACACCAATAACTGC-1         14.391580          FALSE             FALSE
+AAACAGAGCGACTCCT-1         13.242798          FALSE             FALSE
+AAACAGCTTTCAGAAG-1          9.681818          FALSE             FALSE
+AAACAGGGTCTATATT-1         11.721041          FALSE             FALSE
+AAACATTTCCCGGATT-1         10.532675          FALSE             FALSE
+                   nFeatureFiltered combinedFiltered
+AAACAAGTATCTCCCA-1            FALSE            FALSE
+AAACACCAATAACTGC-1            FALSE            FALSE
+AAACAGAGCGACTCCT-1            FALSE            FALSE
+AAACAGCTTTCAGAAG-1            FALSE            FALSE
+AAACAGGGTCTATATT-1            FALSE            FALSE
+AAACATTTCCCGGATT-1            FALSE            FALSE</code></pre>
+</div>
+</div>
+<p>We can now visualise each filter on the tissue image to see where low-quality spots are concentrated:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">SpatialDimPlot</span>(</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  visium,</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">group.by =</span> <span class="fu">c</span>(</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"nCountFiltered"</span>,</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"percentMtFiltered"</span>,</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"nFeatureFiltered"</span>,</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">"combinedFiltered"</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">cols =</span> <span class="fu">c</span>(<span class="st">"lightgrey"</span>, <span class="st">"red"</span>),</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">ncol =</span> <span class="dv">2</span></span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><a href="03-Filtering_files/figure-html/visualise-filtered-cells-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-7"><img src="03-Filtering_files/figure-html/visualise-filtered-cells-1.png" class="img-fluid figure-img" width="960"></a></p>
+</figure>
+</div>
+</div>
+</div>
+<p>We can also tabulate how many spots each filter would remove:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># tabulate number of cells filtered by each metric</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(visium<span class="sc">$</span>nCountFiltered)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+FALSE  TRUE 
+ 2819     4 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(visium<span class="sc">$</span>percentMtFiltered)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+FALSE  TRUE 
+ 2784    39 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(visium<span class="sc">$</span>nFeatureFiltered)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+FALSE  TRUE 
+ 2819     4 </code></pre>
+</div>
+</div>
+<p>Most spots are removed because of a high mitochondrial percentage, while only 4 are removed because of low total counts or few detected genes. The plots also show that low-quality spots cluster in particular regions, which matches the earlier exploratory analysis.</p>
+</section>
+<section id="spatially-aware-thresholds" class="level3" data-number="3.4.2">
+<h3 data-number="3.4.2" class="anchored" data-anchor-id="spatially-aware-thresholds"><span class="header-section-number">3.4.2</span> Spatially aware thresholds</h3>
+<p>There are not many spatially aware filtering methods yet, but one example is <a href="https://mictott.github.io/SpotSweeper/">SpotSweeper</a>.</p>
+<p>This method is not yet compatible with Seurat objects, but it is worth keeping an eye on its development (see the current GitHub issue <a href="https://github.com/MicTott/SpotSweeper/issues/25">here</a>).</p>
+<p>We do not describe it further here, but we may add it to these materials in the future.</p>
+</section>
+</section>
+<section id="applying-filters" class="level2" data-number="3.5">
+<h2 data-number="3.5" class="anchored" data-anchor-id="applying-filters"><span class="header-section-number">3.5</span> Applying Filters</h2>
+<p>Once you have defined your filtering thresholds, you can apply them to your Seurat object to remove low-quality spots.</p>
+<p>We can use <code>subset()</code> with a logical condition to keep only the spots that meet our quality criteria.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Apply combined filter to subset the Seurat object</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>visium <span class="ot">&lt;-</span> <span class="fu">subset</span>(</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  visium,</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">subset =</span> nCount_Spatial <span class="sc">&gt;=</span> <span class="dv">1000</span> <span class="sc">&amp;</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>    nFeature_Spatial <span class="sc">&gt;=</span> <span class="dv">500</span> <span class="sc">&amp;</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>    percentMt_Spatial <span class="sc">&lt;=</span> <span class="dv">30</span></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>In the code above, we use the opposite of the filter columns we created earlier so that only high-quality spots remain.</p>
+<p>We could also use the <code>combinedFiltered</code> column we created earlier, but that would require negating the condition because <code>TRUE</code> marks low-quality spots and <code>FALSE</code> marks good-quality spots. In R, you negate a logical vector with <code>!</code>, so the following code would retain the good-quality spots:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Apply filter using the combinedFiltered column</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>visium <span class="ot">&lt;-</span> <span class="fu">subset</span>(visium, <span class="at">subset =</span> <span class="sc">!</span>combinedFiltered)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>After this step, 2780 spots remain for downstream analyses.</p>
+</section>
+<section id="exporting-filtered-data" class="level2" data-number="3.6">
+<h2 data-number="3.6" class="anchored" data-anchor-id="exporting-filtered-data"><span class="header-section-number">3.6</span> Exporting Filtered Data</h2>
+<p>As usual, it is a good idea to save your Seurat object after each major step so that you can reload it later without repeating the filtering process:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Save the filtered Seurat object</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(visium, <span class="at">file =</span> <span class="st">"results/mouse_brain_filtered.rds"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="exercises" class="level2" data-number="3.7">
+<h2 data-number="3.7" class="anchored" data-anchor-id="exercises"><span class="header-section-number">3.7</span> Exercises</h2>
+<div class="callout callout-style-default callout-exercise no-icon callout-titled">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-3-contents" aria-controls="callout-3" aria-expanded="true" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon no-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Exercise</span>Exercise 1
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-3" class="callout-3-contents callout-collapse collapse show">
+<div class="callout-body-container callout-body">
+<div class="callout-exercise">
+<p>Although library size and the number of unique genes are the standard QC metrics, you can also explore other measures.</p>
+<p>For example, you could investigate whether any spots are outliers in variation of counts across genes.</p>
+<p>Add three additional columns to your metadata:</p>
+<ul>
+<li><code>countMean</code> with the mean counts per spot</li>
+<li><code>countSd</code> with the standard deviation of counts per spot</li>
+<li><code>countCV</code> with the coefficient of variation per spot, calculated as standard deviation / mean</li>
+</ul>
+<p>Then plot each metric on a spatial plot. What do you conclude?</p>
+<div class="callout callout-style-default callout-answer no-icon callout-titled">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-2-contents" aria-controls="callout-2" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon no-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Answer</span>Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-2" class="callout-2-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<div class="callout-answer">
+<p>We can use <code>colMeans()</code> and <code>colSds()</code> to calculate the first two metrics. We then use the existing columns to calculate the third.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Add new metrics to metadata</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>visium<span class="sc">$</span>countMean <span class="ot">&lt;-</span> <span class="fu">colMeans</span>(visium[[<span class="st">"Spatial"</span>]]<span class="sc">$</span>counts)</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>visium<span class="sc">$</span>countSd <span class="ot">&lt;-</span> <span class="fu">colSds</span>(visium[[<span class="st">"Spatial"</span>]]<span class="sc">$</span>counts)</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>visium<span class="sc">$</span>countCV <span class="ot">&lt;-</span> visium<span class="sc">$</span>countSd <span class="sc">/</span> visium<span class="sc">$</span>countMean</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>We can then use <code>SpatialFeaturePlot()</code> to visualise these metrics:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">SpatialFeaturePlot</span>(visium, <span class="fu">c</span>(<span class="st">"countMean"</span>, <span class="st">"countSd"</span>, <span class="st">"countCV"</span>), <span class="at">ncol =</span> <span class="dv">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><a href="03-Filtering_files/figure-html/plot-additional-metrics-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-8"><img src="03-Filtering_files/figure-html/plot-additional-metrics-1.png" class="img-fluid figure-img" width="960"></a></p>
+</figure>
+</div>
+</div>
+</div>
+<p>We conclude that:</p>
+<ul>
+<li>The mean is strongly correlated with library size, as expected, so the spatial pattern is very similar to <code>nCount_Spatial</code>.</li>
+<li>The standard deviation and CV highlight a few outlier spots that the earlier QC plots did not flag.</li>
+</ul>
+<p>You could explore the coefficient of variation further by looking at its distribution and checking which spots would be removed by an outlier-based filter.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 99th percentile of the coefficient of variation</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="fu">quantile</span>(visium<span class="sc">$</span>countCV, <span class="fl">0.99</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     99% 
+28.89763 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># histogram of the coefficient of variation with a vertical line at some potential thresholds</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  visium<span class="sc">$</span>countCV,</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">breaks =</span> <span class="dv">50</span>,</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">main =</span> <span class="st">"Distribution of coefficient of variation"</span>,</span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">xlab =</span> <span class="st">"Coefficient of variation"</span></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="fu">quantile</span>(visium<span class="sc">$</span>countCV, <span class="fl">0.99</span>), <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="dv">40</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><a href="03-Filtering_files/figure-html/explore-cv-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-9"><img src="03-Filtering_files/figure-html/explore-cv-1.png" class="img-fluid figure-img" width="960"></a></p>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co"># highlight the outlier spots on a spatial plot</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>visium<span class="sc">$</span>cvFiltered <span class="ot">&lt;-</span> visium<span class="sc">$</span>countCV <span class="sc">&gt;=</span> <span class="dv">40</span></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a><span class="fu">SpatialDimPlot</span>(visium, <span class="at">group.by =</span> <span class="st">"cvFiltered"</span>, <span class="at">cols =</span> <span class="fu">c</span>(<span class="st">"lightgrey"</span>, <span class="st">"red"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><a href="03-Filtering_files/figure-html/explore-cv-2.png" class="lightbox" data-gallery="quarto-lightbox-gallery-10"><img src="03-Filtering_files/figure-html/explore-cv-2.png" class="img-fluid figure-img" width="960"></a></p>
+</figure>
+</div>
+</div>
+</div>
+<p>We can see that a few more spots would be filtered out if we used the coefficient of variation, compared with the earlier filters. In this example, we chose <code>CV &gt;= 40</code>, which means the standard deviation in counts across genes is at least 40 times higher than the mean count for that spot. This represents a substantial fluctuation in expression across genes, which may indicate low-quality spots where some genes have very high expression levels while others have very low expression levels.</p>
+<p>However, this pattern could reflect genuine biology, and as we’ve said several times, <strong>being familiar with your tissue will help making these filtering decisions</strong>.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="summary" class="level2" data-number="3.8">
+<h2 data-number="3.8" class="anchored" data-anchor-id="summary"><span class="header-section-number">3.8</span> Summary</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Key Points
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ul>
+<li>Library size, detected genes, and mitochondrial percentage are the three core QC metrics for Visium data.
+<ul>
+<li><code>colSums()</code> calculates library size and detected genes from the raw count matrix.</li>
+<li><code>PercentageFeatureSet()</code> calculates the fraction of counts from any named gene set.</li>
+<li>Mouse mitochondrial genes are prefixed with <code>mt-</code>, but this prefix may differ between references.</li>
+</ul></li>
+<li><code>VlnPlot()</code> and <code>SpatialPlot()</code> together reveal both global distributions and the spatial context of QC metrics.
+<ul>
+<li>Violin plots show the range and spread of each metric across all spots.</li>
+<li>Spatial plots show whether low-quality spots concentrate in particular tissue regions.</li>
+</ul></li>
+<li>There are no fixed filtering thresholds, with hand-picked cutoffs and quantile-based cutoffs being common.
+<ul>
+<li>Always visualise each threshold alongside the relevant distribution before applying it.</li>
+<li>Adding <code>TRUE</code>/<code>FALSE</code> indicator columns to the metadata lets you see which spots would be removed.</li>
+</ul></li>
+<li>Spatial QC plots help distinguish technical artefacts from genuine biological variation.
+<ul>
+<li>High mitochondrial percentage combined with low counts at the tissue periphery may indicate damaged tissue.</li>
+<li>Filtering non-randomly distributed spots introduces spatial bias into downstream analysis.</li>
+</ul></li>
+<li><code>subset()</code> applies logical filter conditions to a Seurat object to retain only high-quality spots.
+<ul>
+<li>Filter conditions reference metadata column names directly in the <code>subset</code> argument.</li>
+<li>Save the filtered object with <code>saveRDS()</code> before moving to downstream analysis.</li>
+</ul></li>
+</ul>
+</div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../materials/02-DataImport.html" class="pagination-link" aria-label="Data Import">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Data Import</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../materials/04-Normalisation.html" class="pagination-link" aria-label="Normalisation">
+        <span class="nav-page-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Normalisation</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+<p>Licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> <img src="https://creativecommons.org/images/deed/cc_icon_black_x2.png" class="img-fluid" width="25"> Cambridge Research Informatics Training</p>
+</div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
+
+
+
+
+</body></html>
