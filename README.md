@@ -22,6 +22,29 @@ This way learners can always start from each chapter, independently of having su
 
 ### First-time setup and rendering
 
+The project uses [Pixi](https://pixi.sh/) to provide the Quarto, R, Python, and package environment.
+After installing Pixi, create the environment from the committed lock file:
+
+```bash
+pixi install
+```
+
+Some R dependencies are installed directly from CRAN or GitHub and therefore need a one-time additional step:
+
+```bash
+pixi run install-github-packages
+```
+
+Run Quarto through Pixi to ensure it uses the project environment:
+
+```bash
+# Render the complete book
+pixi run render
+
+# Render a single chapter
+pixi run quarto render materials/01-introduction.qmd
+```
+
 The first full render of the book may take some time due to some expensive computations.
 For example:
 
