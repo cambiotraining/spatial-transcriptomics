@@ -69,16 +69,16 @@ In our [previous clustering chapter](06-Clustering.qmd), we grouped spots based 
 To capture this, we need clustering methods that incorporate spatial information alongside gene expression.
 
 BANKSY is a spatially aware clustering method that combines gene expression with spatial context.
-Unlike standard graph-based clustering, BANKSY first enriches the gene expression matrix by adding spatial features, then clusters using this augmented representation.
+Unlike standard graph-based clustering, BANKSY first enriches the gene expression matrix by adding neighbourhood-based features, and then clusters based on this augmented expression matrix.
 
-For each gene, BANKSY calculates two spatial features:
+For each gene, BANKSY calculates two neighbourhood-based features:
 
 - **Mean neighbourhood expression**: The average expression of a gene across neighbouring spots, weighted so nearby spots contribute more strongly than distant ones.
 - **Azimuthal Gabor filter (AGF)**: Inspired by image processing, this captures directional changes in expression around each spot by measuring how expression differs across the neighbourhood.
   It highlights spots that deviate from their surrounding tissue environment.
 
-BANKSY combines these spatial features with the original gene expression values before clustering.
-The result is that BANKSY identifies tissue domains defined by both gene expression and spatial patterns.
+BANKSY combines these neighbourhood features with the original gene expression values before clustering.
+The result is that BANKSY identifies tissue domains defined by both the magnitude of gene expression (as the original clustering) and spatial patterns of gene expression (neighbourhood average and directional changes).
 
 ## Running BANKSY
 
@@ -324,7 +324,7 @@ Because BANKSY clusters are spatially informed, their marker genes indirectly re
 However, which assay we use affects the result:
 
 - Use the "SCT" assay to identify genes differentially expressed between BANKSY clusters in their original expression space.
-- If we use the "BANKSY" assay, we identify genes differentially expressed in the augmented space including spatial features, which may not directly reflect gene expression differences.
+- If we use the "BANKSY" assay, we identify genes differentially expressed in the augmented space including neighbourhood-derived features, which may not directly reflect gene expression differences.
 
 We therefore use the "SCT" assay:
 
@@ -399,16 +399,28 @@ saveRDS(visium, "precomputed/mouse_brain_banksy.rds")
 
 ## Exercises
 
+<!-- Note: this is here so we purl it into the participant's scripts -->
+```{r}
+#| label: exercise1-header
+#| include: false
+
+#### Exercise 1 ####
+```
+
 ::: {.callout-exercise}
 #### Exploring lambda
 
 In the code above, we ran BANKSY with `lambda = 0.2`, which weights transcriptional information more heavily than spatial information.
 Try running BANKSY with `lambda = 0.8`, which weights spatial information more heavily, and compare the results.
 
-To avoid overwriting the previous results:
+To avoid overwriting the previous results, create a new Seurat object to run the analysis:
 
-- In `RunBanksy()` use the `assay_name` option to name the new assay differently (e.g. "BANKSY_lambda_0.8").
-- In `FindClusters()` use the `cluster.name` option with a different name (e.g. "banksy_cluster_lambda_0.8").
+```{r}
+#| label: exercise-prepare-banksy-objects
+
+# Create a new Seurat object for the Banksy analysis with lambda = 0.8
+banksy_lambda08 <- readRDS("precomputed/mouse_brain_svgs.rds")
+```
 
 ::::: {.callout-hint}
 As a reminder, here is the complete workflow we ran earlier:
@@ -446,60 +458,60 @@ visium <- visium |>
   )
 ```
 
-You can adapt this workflow by changing the lambda value and updating the assay and cluster names.
+Apply this workflow to the new object with `lambda = 0.8`.
 :::::
 
 ::::: {.callout-answer}
-We adapt the workflow with the new lambda value and updated assay and cluster names.
-The names are intentionally verbose for clarity, though you may prefer shorter names in your own analysis.
+We run the workflow on the new object with the higher lambda value.
 
 ```{r}
 #| label: banksy-lambda-0.8
 #| cache: true
+#| purl: false
 
 # Run BANKSY
-visium <- visium |>
+banksy_lambda08 <- banksy_lambda08 |>
   RunBanksy(
     assay = "SCT",
     lambda = 0.8,
     k_geom = 18,
     use_agf = TRUE,
-    features = "all",
-    assay_name = "banksy_lambda_08"
+    features = "all"
   )
 
 # PCA, Clustering and UMAP
-visium <- visium |>
+banksy_lambda08 <- banksy_lambda08 |>
   RunPCA(
-    assay = "banksy_lambda_08",
-    reduction.name = "pca_banksy_lambda_08",
-    reduction.key = "pcabanksylambda08_",
-    features = rownames(visium[["banksy_lambda_08"]]),
+    assay = "BANKSY",
+    reduction.name = "pca_banksy",
+    reduction.key = "pcabanksy_",
+    features = rownames(banksy_lambda08[["BANKSY"]]),
     npcs = 50
   ) |>
-  FindNeighbors(reduction = "pca_banksy_lambda_08", dims = 1:50) |>
-  FindClusters(cluster.name = "banksy_cluster_lambda_08", resolution = 0.8) |>
+  FindNeighbors(reduction = "pca_banksy", dims = 1:50) |>
+  FindClusters(cluster.name = "banksy_cluster", resolution = 0.8) |>
   RunUMAP(
-    reduction = "pca_banksy_lambda_08",
+    reduction = "pca_banksy",
     dims = 1:50,
-    reduction.name = "umap_banksy_lambda_08"
+    reduction.name = "umap_banksy"
   )
 
 # Confirm the new assay and dimensionality reductions are present
-Assays(visium)
-Reductions(visium)
+Assays(banksy_lambda08)
+Reductions(banksy_lambda08)
 ```
 
 We now plot these results alongside the `lambda = 0.2` analysis:
 
 ```{r}
 #| label: compare-lambda
+#| purl: false
 
 # UMAP plot
 banksy_umap_08 <- DimPlot(
-  visium,
-  reduction = "umap_banksy_lambda_08",
-  group.by = "banksy_cluster_lambda_08",
+  banksy_lambda08,
+  reduction = "umap_banksy",
+  group.by = "banksy_cluster",
   label = TRUE
 ) +
   ggtitle("lambda = 0.8, k_geom = 18") +
@@ -507,8 +519,8 @@ banksy_umap_08 <- DimPlot(
 
 # Spatial plot
 banksky_spatial_08 <- SpatialDimPlot(
-  visium,
-  group.by = "banksy_cluster_lambda_08",
+  banksy_lambda08,
+  group.by = "banksy_cluster",
   label = TRUE,
   label.size = 4,
   image.alpha = 0.5
@@ -532,6 +544,14 @@ For identifying cell types that may be scattered across different regions, use a
 :::::
 :::
 
+<!-- Note: this is here so we purl it into the participant's scripts -->
+```{r}
+#| label: exercise2-header
+#| include: false
+
+#### Exercise 1 ####
+```
+
 ::: {.callout-exercise}
 #### Exploring neighbourhood size
 
@@ -542,54 +562,66 @@ Run BANKSY with `k_geom = 60`, keeping `lambda = 0.2` as in the original analysi
 This includes four rings of spots on the hexagonal lattice (see discussion box above).
 Compare the results to the original analysis (`lambda = 0.2, k_geom = 18`).
 
-::::: {.callout-answer}
+To avoid overwriting the previous results, create a new Seurat object to run the analysis:
+
 ```{r}
-#| label: banksy-k-36
+#| label: exercise-prepare-banksy-k-objects
+
+# Create a new Seurat object for the Banksy analysis with k_geom = 60
+banksy_k60 <- readRDS("precomputed/mouse_brain_svgs.rds")
+```
+
+::::: {.callout-answer}
+We run the workflow on the new object with the larger neighbourhood size.
+
+```{r}
+#| label: banksy-k-60
 #| cache: true
+#| purl: false
 
 # Run BANKSY
-visium <- visium |>
+banksy_k60 <- banksy_k60 |>
   RunBanksy(
     assay = "SCT",
     lambda = 0.2,
     k_geom = 60,
     use_agf = TRUE,
-    features = "all",
-    assay_name = "banksy_k_60"
+    features = "all"
   )
 
 # PCA, Clustering and UMAP
-visium <- visium |>
+banksy_k60 <- banksy_k60 |>
   RunPCA(
-    assay = "banksy_k_60",
-    reduction.name = "pca_banksy_k_60",
-    reduction.key = "pcabanksyk60_",
-    features = rownames(visium[["banksy_k_60"]]),
+    assay = "BANKSY",
+    reduction.name = "pca_banksy",
+    reduction.key = "pcabanksy_",
+    features = rownames(banksy_k60[["BANKSY"]]),
     npcs = 50
   ) |>
-  FindNeighbors(reduction = "pca_banksy_k_60", dims = 1:50) |>
-  FindClusters(cluster.name = "banksy_cluster_k_60", resolution = 0.8) |>
+  FindNeighbors(reduction = "pca_banksy", dims = 1:50) |>
+  FindClusters(cluster.name = "banksy_cluster", resolution = 0.8) |>
   RunUMAP(
-    reduction = "pca_banksy_k_60",
+    reduction = "pca_banksy",
     dims = 1:50,
-    reduction.name = "umap_banksy_k_60"
+    reduction.name = "umap_banksy"
   )
 
 # Confirm the new assay and dimensionality reductions are present
-Assays(visium)
-Reductions(visium)
+Assays(banksy_k60)
+Reductions(banksy_k60)
 ```
 
 We create UMAP and spatial plots for this analysis and compare them to the original:
 
 ```{r}
 #| label: compare-k
+#| purl: false
 
 # UMAP plot
 banksy_umap_k60 <- DimPlot(
-  visium,
-  reduction = "umap_banksy_k_60",
-  group.by = "banksy_cluster_k_60",
+  banksy_k60,
+  reduction = "umap_banksy",
+  group.by = "banksy_cluster",
   label = TRUE
 ) +
   ggtitle("Lambda = 0.2, k_geom = 60") +
@@ -597,8 +629,8 @@ banksy_umap_k60 <- DimPlot(
 
 # Spatial plot
 banksky_spatial_k60 <- SpatialDimPlot(
-  visium,
-  group.by = "banksy_cluster_k_60",
+  banksy_k60,
+  group.by = "banksy_cluster",
   label = TRUE,
   label.size = 4,
   image.alpha = 0.5
@@ -637,7 +669,7 @@ You may therefore want to use lower `k_geom` and `lambda` values than for high-r
 
 - Use `RunBanksy()` to augment expression data with spatial features: mean neighbourhood expression (average expression in neighbouring spots) and azimuthal Gabor filter (directional changes in expression).
   - `RunBanksy()` has three key parameters: `lambda` (balance between spatial and transcriptional information), `k_geom` (number of spatial neighbours), and `use_agf` (whether to calculate AGF features).
-  - The resulting augmented matrix has three times as many features as the original: original expression plus two spatial features per gene.
+  - The resulting augmented matrix has three times as many features as the original: original expression plus two neighbourhood-derived features per gene.
 
 - BANKSY clusters differ from non-spatial clusters because they prioritise spatial coherence alongside transcriptional similarity.
   - Non-spatial clustering identifies **cell identities**: cells with similar expression profiles, regardless of location.

@@ -305,6 +305,7 @@ You can expand the code block below to see the command used.
 #| code-fold: true
 #| code-summary: "Click for `run.RCTD()` command - takes a long time to run!"
 #| results: "hide"
+#| purl: false
 
 # This will run about ~12-15 minutes on 8 cores
 rctd <- run.RCTD(rctd, doublet_mode = "doublet")
@@ -315,15 +316,14 @@ rctd <- run.RCTD(rctd, doublet_mode = "doublet")
 #| include: false
 #| purl: false
 
-if (!file.exists("precomputed/mouse_brain_rctd_doublet.rds")) {
-  saveRDS(rctd, "precomputed/mouse_brain_rctd_doublet.rds")
-}
+saveRDS(rctd, "precomputed/mouse_brain_rctd_doublet.rds")
 ```
 
 ```{r}
 #| label: read-precomputed-rctd-doublet
 
-# Read precomputed rctd object in doublet mode
+# run.RCTD takes too long to run - see course materials for details
+# read precomputed rctd object in doublet mode
 rctd <- readRDS("precomputed/mouse_brain_rctd_doublet.rds")
 ```
 
@@ -458,6 +458,7 @@ The code below shows how it was generated.
 #| code-fold: true
 #| code-summary: "Click for `run.RCTD()` command - takes a long time to run!"
 #| results: "hide"
+#| purl: false
 
 # Run RCTD in full mode
 # Takes a long time to run! Read the precomputed object below instead
@@ -469,15 +470,13 @@ rctd_full <- run.RCTD(rctd, doublet_mode = "full")
 #| include: false
 #| purl: false
 
-if (!file.exists("precomputed/mouse_brain_rctd_full.rds")) {
-  saveRDS(rctd_full, "precomputed/mouse_brain_rctd_full.rds")
-}
+saveRDS(rctd_full, "precomputed/mouse_brain_rctd_full.rds")
 ```
 
 ```{r}
 #| label: read-precomputed-rctd-multi
-#| eval: false
 
+# run.RCTD takes too long to run - see course materials for details
 # Read precomputed rctd object in doublet mode
 rctd_full <- readRDS("precomputed/mouse_brain_rctd_full.rds")
 ```

@@ -416,6 +416,14 @@ saveRDS(visium, file = "precomputed/mouse_brain_filtered.rds")
 
 ## Exercises
 
+<!-- Note: this is here so we purl it into the participant's scripts -->
+```{r}
+#| label: exercise-header
+#| include: false
+
+#### Exercises ####
+```
+
 ::: {.callout-exercise}
 Although library size and the number of unique genes are the standard QC metrics, you can also explore other measures.
 
@@ -436,6 +444,7 @@ We then use the existing columns to calculate the third.
 
 ```{r}
 #| label: calculate-additional-metrics
+#| purl: false
 
 # Add new metrics to metadata
 visium$countMean <- colMeans(visium[["Spatial"]]$counts)
@@ -447,6 +456,7 @@ We can then use `SpatialFeaturePlot()` to visualise these metrics:
 
 ```{r}
 #| label: plot-additional-metrics
+#| purl: false
 
 SpatialFeaturePlot(visium, c("countMean", "countSd", "countCV"), ncol = 2)
 ```
@@ -460,6 +470,7 @@ You could explore the coefficient of variation further by looking at its distrib
 
 ```{r}
 #| label: explore-cv
+#| purl: false
 
 # 99th percentile of the coefficient of variation
 quantile(visium$countCV, 0.99)
