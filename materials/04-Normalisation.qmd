@@ -232,6 +232,7 @@ We already ran log-normalisation above; here we show both steps together for com
 #| cache: true
 #| code-fold: true
 #| code-summary: "Show code for normalisation and scaling - takes a long time to run!"
+#| purl: false
 
 # Perform log-normalisation and scaling
 # This takes a long time to run!
@@ -242,10 +243,19 @@ visium <- visium |>
 ```
 
 ```{r}
-#| label: read-normalised-preprocessed
-#| eval: false
+#| label: save-full-participant
+#| include: false
+#| purl: false
 
-# Read the preprocessed object with log-normalisation and scaling already applied
+# Save full normalised object for participant use
+saveRDS(visium, file = "precomputed/mouse_brain_normalised.rds")
+```
+
+```{r}
+#| label: read-normalised-preprocessed
+
+# ScaleData with vars.to.regress takes a very long time to run so we
+# read the preprocessed object with log-normalisation and scaling already applied
 visium <- readRDS("precomputed/mouse_brain_normalised.rds")
 
 # Confirm a new layer called "scale.data" has been added to the "Spatial" assay
@@ -442,15 +452,6 @@ At this stage the object contains several assays and layers, which increases mem
 If you plan to continue with one representation (for example `SCT`), you can remove unused assays or layers before saving.
 
 ```{r}
-#| label: save-full-participant
-#| include: false
-#| purl: false
-
-# Save full normalised object for participant use
-saveRDS(visium, file = "precomputed/mouse_brain_normalised.rds")
-```
-
-```{r}
 #| label: cleanup
 
 # make SCT default assay
@@ -481,6 +482,14 @@ saveRDS(visium, file = "precomputed/mouse_brain_normalised_cleaned.rds")
 
 ## Exercises
 
+<!-- Note: this is here so we purl it into the participant's scripts -->
+```{r}
+#| label: exercise-header
+#| include: false
+
+#### Exercises ####
+```
+
 ::: {.callout-exercise}
 #### Effect of Z-score transformation and mitochondrial regression
 
@@ -507,6 +516,7 @@ visium2 <- readRDS("precomputed/mouse_brain_filtered.rds")
 
 ```{r}
 #| label: sctransform-no-mt
+#| purl: false
 
 # Apply SCTransform without regressing out mitochondrial percentage
 visium2 <- SCTransform(
@@ -522,6 +532,7 @@ Layers(visium2[["SCT"]])
 
 ```{r}
 #| label: log-normalisation-no-mt
+#| purl: false
 
 # Perform log-normalisation without scaling or mitochondrial regression
 visium2 <- visium2 |>
@@ -540,6 +551,7 @@ Layers(visium2[["Spatial"]])
 #| warning: false
 #| message: false
 #| results: "hide"
+#| purl: false
 
 # SCTransform clustering
 DefaultAssay(visium2) <- "SCT"
@@ -568,6 +580,7 @@ You can also compare the two clustering results with ARI:
 
 ```{r}
 #| label: ari-no-mt
+#| purl: false
 
 # Calculate ARI between the different clusterings
 adjustedRandIndex(visium2$sctClusters, visium2$scaledClusters)
@@ -580,6 +593,7 @@ We can also compare each method with and without mitochondrial regression to ass
 
 ```{r}
 #| label: ari-mt-vs-no-mt
+#| purl: false
 
 # create a data frame to store the ARI results for each pair of clusterings
 ari_results_mt_vs_no_mt <- data.frame(

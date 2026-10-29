@@ -178,13 +178,12 @@ To do that, run `FindSpatiallyVariableFeatures()` again with `selection.method =
 The markvariogram method is slower than Moran's I, so this chapter uses a precomputed object to save time.
 You can expand the code block below to see the code used.
 
-
 ```{r}
 #| label: find-svg-markvariogram
 #| cache: true
 #| code-fold: true
 #| code-summary: "Run FindSpatiallyVariableFeatures with markvariogram - takes a long time, read precomputed object instead"
-#| eval: false
+#| purl: false
 
 # Identify spatially variable features using the "markvariogram" method
 # Takes a long time to run! Read the precomputed object below instead
@@ -198,32 +197,11 @@ visium <- FindSpatiallyVariableFeatures(
 
 ```{r}
 #| label: load-markvariogram-results
-#| eval: false
 
-# Load precomputed markvariogram results
+# Markvariogram method takes a long time to run so we
+# load precomputed markvariogram results
 visium <- readRDS("precomputed/mouse_brain_svgs.rds")
 ```
-
-```{r}
-#| label: create-object
-#| cache: true
-#| include: false
-#| purl: false
-
-# If precomputed object doesn't exist, run the code to create it
-if (!file.exists("precomputed/mouse_brain_svgs.rds")) {
-  visium <- FindSpatiallyVariableFeatures(
-    visium,
-    assay = "SCT",
-    selection.method = "markvariogram",
-    nfeatures = 2000
-  )
-  saveRDS(visium, "precomputed/mouse_brain_svgs.rds")
-} else {
-  visium <- readRDS("precomputed/mouse_brain_svgs.rds")
-}
-```
-
 
 After running the function again, `SpatiallyVariableFeatures()` returns the top 2000 SVGs identified with markvariogram instead of Moran's I.
 

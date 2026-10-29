@@ -27,4 +27,7 @@ for f in materials/*.qmd; do
             documentation = 0
         )
     "
+
+    # tidy up format
+    air format $out
 done

@@ -1,0 +1,32 @@
+[workspace]
+authors = ["Cambridge Research Informatics Training"]
+channels = ["conda-forge", "bioconda"]
+name = "spatial-transcriptomics"
+platforms = ["linux-64", "osx-64", "osx-arm64"]
+
+[dependencies]
+quarto = "*"
+r-base = "*"
+r-pak = "*"
+r-tidyverse = "*"
+r-pheatmap = "*"
+"r-r.utils" = "*"
+r-paletteer = "*"
+r-seurat = "*"
+r-hdf5r = "*"
+r-leidenbase = "*"
+r-ape = "*"
+r-sf = "*"
+bioconductor-clusterprofiler = "*"
+"bioconductor-org.hs.eg.db" = "*"
+bioconductor-glmgampoi = "*"
+bioconductor-spatialexperiment = "*"
+bioconductor-spanorm = "*"
+bioconductor-biocneighbors = "*"
+bioconductor-complexheatmap = "*"
+air = ">=0.12.0,<0.13"
+python = "3.13.*"
+
+[tasks]
+install-github-packages = { cmd = "Rscript -e 'pak::pkg_install(c(\"Rfast2\", \"satijalab/seurat-wrappers\", \"prabhakarlab/Banksy\", \"dmcable/spacexr\", \"immunogenomics/presto\", \"jinworks/CellChat\"))'" }
+render = "quarto render"

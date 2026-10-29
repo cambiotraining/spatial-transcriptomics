@@ -41,6 +41,7 @@ library(dplyr)
 library(ggplot2)
 library(patchwork)
 library(pheatmap)
+library(paleteer)
 ```
 
 ## Loading the data
