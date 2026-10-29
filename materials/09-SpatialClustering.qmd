@@ -549,7 +549,7 @@ For identifying cell types that may be scattered across different regions, use a
 #| label: exercise2-header
 #| include: false
 
-#### Exercise 1 ####
+#### Exercise 2 ####
 ```
 
 ::: {.callout-exercise}
