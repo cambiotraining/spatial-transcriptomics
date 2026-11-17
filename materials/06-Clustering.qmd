@@ -167,7 +167,8 @@ We can use this variable to colour these clusters on a UMAP and spatial plot:
 umap_clusters <- DimPlot(
   visium,
   reduction = "umap",
-  group.by = "seurat_clusters"
+  group.by = "seurat_clusters",
+  label = TRUE
 ) +
   ggtitle("Default clustering") +
   coord_equal() +
@@ -176,11 +177,15 @@ umap_clusters <- DimPlot(
 # Spatial plot of clusters
 spatial_clusters <- SpatialDimPlot(
   visium,
-  group.by = "seurat_clusters"
+  group.by = "seurat_clusters",
+  label = TRUE,
+  label.size = 4
 )
 
 # Assemble the plots side by side
-umap_clusters + spatial_clusters & theme(legend.position = "none")
+umap_clusters +
+  spatial_clusters &
+  theme(legend.position = "none")
 ```
 
 We can see that the clusters are reasonably well separated on the UMAP and align quite well with the spatial structure of the tissue.
@@ -303,7 +308,7 @@ It is unclear whether they represent biologically meaningful populations or over
 It can be hard to distinguish clusters due to the large number of clusters and the colour scheme.
 So, it may be worth sometimes **highlighting specific clusters of interest** to see where they are located on the tissue and UMAP.
 
-For example, one notable exception to the spatial coherence is Louvain cluster 5 (Leiden cluster 4), which appears to be split across two spatial regions and on the UMAP.
+For example, one notable exception to the spatial coherence is Cluster 5 on both methods, which appears to be split across two spatial regions and on the UMAP.
 Let's highlight this cluster on the spatial plot to see where it is located.
 
 ```{r}
@@ -313,9 +318,9 @@ Let's highlight this cluster on the spatial plot to see where it is located.
 # The WhichCells() function allows us to select cells based on their cluster assignment
 SpatialDimPlot(
   visium,
-  cells.highlight = WhichCells(visium, expression = Leiden_05 == 4)
+  cells.highlight = WhichCells(visium, expression = Louvain_05 == 5)
 ) +
-  ggtitle("Leiden Cluster 4 Spatial Location")
+  ggtitle("Louvain Cluster 5 Spatial Location")
 ```
 
 Is this a reasonable clustering result?
@@ -392,16 +397,17 @@ spatial_leiden08 <- SpatialDimPlot(
 As expected, increasing the resolution to 0.8 increases the number of clusters.
 We went from `r length(unique(visium$Louvain_05))` to `r length(unique(visium$Louvain_08))` for Louvain, and from `r length(unique(visium$Leiden_05))` to `r length(unique(visium$Leiden_08))` for Leiden.
 
-Interestingly, for Louvain this change in resolution only resulted in one more cluster.
-But the actual change is more complex than that.
-For example:
+For example, the previously highlighted Louvain cluster 5 is now split into two clusters (now called 6 and 12).
+This may be a good thing, if those are biologically distinct tissue regions. Again, knowledge of the tissue is essential to make these interpretations.
 
-- The previously highlighted cluster 5 is now split into two clusters (now called 5 and 12).
-  This may be a good thing, if those are biologically distinct.
-- However, the new clusters 3 and 5 are now less spatially coherent, and in fact contain a mixture of spots of what used to be better spatially-separated clusters at resolution 0.5.
+Because cluster numbers change between runs, it may be helpful to cross-tabulate how many cells are in each cluster to see the differences between them:
 
-On the other hand, for Leiden, increasing the resolution to 0.8 resulted in three more clusters, but this increase seems to be more spatially coherent with the previous resolution.
-For example, old cluster 1 has been split into three clusters (1, 10 and 11), and the old cluster 2 into two (now 2 and 9).
+```{r}
+#| label: cluster-table-heatmap
+
+# tabulate spots across clustering methods
+table(visium$Louvain_05, visium$Louvain_08)
+```
 
 ::: {.callout-note collapse="true"}
 #### Agreement between clusters using Adjusted Rand Index
