@@ -1,0 +1,179 @@
+# Scran Normalisation (Appendix)
+
+```{r}
+#| label: setup
+#| include: false
+#| purl: false
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  cache.lazy = FALSE
+)
+
+# set the working directory to the course_files folder
+# make sure to run course_files/download_course_files.sh
+knitr::opts_knit$set(root.dir = here::here("course_files"))
+```
+
+This appendix gathers the scran-based workflow previously referenced in the [Normalisation](04-Normalisation.qmd) and [Dimensionality Reduction](05-DimensionalityReduction.qmd) chapters.
+The main course follows standard Seurat workflows, but this document provides a practical extension when you want pooled size-factor normalisation.
+
+## Setup
+
+```{r}
+#| label: load-visium-data
+
+# Load libraries
+library(Seurat) # single-cell and spatial analysis toolkit
+library(sparseMatrixStats)
+library(paletteer) # colour palettes
+library(ggplot2) # plotting
+library(patchwork) # combining plots
+
+# Load the Seurat object from the previous chapter
+visium <- readRDS("precomputed/mouse_brain_filtered.rds")
+```
+
+## Why use scran?
+
+In simple library-size normalisation, each spot is scaled by its total counts.
+Scran instead estimates spot-specific size factors by pooling information across similar spots, which can improve robustness in sparse data such as single-cell and spatial transcriptomics.
+
+In practice, this workflow relies on:
+
+- [`scran`](https://bioconductor.org/packages/release/bioc/html/scran.html) for fast clustering and feature modelling.
+- [`scuttle`](https://bioconductor.org/packages/release/bioc/html/scuttle.html) for pooled size-factor estimation.
+
+## Scran normalisation in Seurat
+
+The scran workflow is designed for Bioconductor classes such as `SingleCellExperiment` and `SpatialExperiment`.
+When working with Seurat, we run the core steps manually:
+
+1. Use `scran::quickCluster()` to group similar spots for pooling.
+2. Estimate pooled size factors with `scuttle::pooledSizeFactors()`.
+3. Divide counts by those size factors and log-transform.
+4. Store the result as a new Seurat assay (`Scran`) for downstream analysis.
+
+```{r}
+#| label: scran-normalisation
+#| cache: true
+
+# Quick clustering on raw counts - internally some normalisation is applied
+quickClusters <- scran::quickCluster(visium[["Spatial"]]$counts)
+
+# Get pooled size factors using the raw counts
+sizeFactors <- scuttle::pooledSizeFactors(
+  visium[["Spatial"]]$counts,
+  clusters = quickClusters
+)
+
+# Normalise the counts with the size factors and log-transform
+# Note the double-transpose used to apply the size factors to the columns (spots) of the matrix
+scranNormCts <- log1p(
+  t(
+    t(visium[["Spatial"]]$counts) / sizeFactors
+  )
+)
+```
+
+```{r}
+#| label: add-scran-assay
+
+# Add the Scran-normalised data as a new assay
+visium[["Scran"]] <- CreateAssayObject(data = scranNormCts)
+
+# Store size factors in metadata
+visium$scranSizeFactors <- sizeFactors
+```
+
+To use this assay downstream:
+
+```{r}
+#| label: activate-scran-assay
+
+DefaultAssay(visium) <- "Scran"
+```
+
+## Working with Seurat downstream functions
+
+To compare fairly with Seurat's default log-normalisation workflow, you can run `ScaleData()` on the `Scran` assay.
+However, note that Z-scoring is not a standard part of scran workflows.
+
+```{r}
+#| label: scran-scaling
+#| eval: false
+#| purl: false
+
+# Add a `scale.data` layer to the Scran assay
+visium <- visium |>
+  ScaleData(assay = "Scran", vars.to.regress = "percentMt_Spatial")
+```
+
+If you only need a `scale.data` layer (for functions that require it) without Z-scoring or regression:
+
+```{r}
+#| label: scran-copy-data-to-scale-data
+#| eval: false
+#| purl: false
+
+visium <- visium |>
+  ScaleData(assay = "Scran", do.scale = FALSE, do.center = FALSE)
+```
+
+## HVG selection on the Scran assay
+
+In [Dimensionality Reduction](05-DimensionalityReduction.qmd), highly variable genes (HVGs) were selected using Seurat defaults on standard assays.
+For the `Scran` assay, you can use scran's variance modelling approach directly on log-normalised data:
+
+```{r}
+#| label: find-variable-genes-scran
+#| cache: true
+#| warning: false
+
+# Ensure Scran is the active assay
+DefaultAssay(visium) <- "Scran"
+
+# Assign variable genes to this assay using scran's method
+VariableFeatures(visium, assay = "Scran") <- visium[["Scran"]]$data |>
+  scran::modelGeneVar() |>
+  scran::getTopHVGs(n = 2000)
+```
+
+`VariableFeaturePlot()` may not work with manually assigned features, so we can visualise means and variances directly:
+
+```{r}
+#| label: variable-feature-plot-scran
+
+# Calculate means and variances per gene
+scranMeans <- rowMeans(visium[["Scran"]]$data)
+scranVars <- rowVars(visium[["Scran"]]$data)
+
+# Plot them with selected HVGs overlaid
+plot(scranMeans, scranVars)
+points(
+  scranMeans[VariableFeatures(visium, assay = "Scran")],
+  scranVars[VariableFeatures(visium, assay = "Scran")],
+  col = "red"
+)
+```
+
+If you have already run the standard Seurat workflows from earlier chapters, you can also compare HVG overlap across assays:
+
+```{r}
+#| label: compare-hvgs-intersection
+#| eval: false
+#| purl: false
+
+gplots::venn(list(
+  Spatial = VariableFeatures(visium, assay = "Spatial"),
+  Scran = VariableFeatures(visium, assay = "Scran"),
+  SCT = VariableFeatures(visium, assay = "SCT")
+))
+```
+
+## Conclusion
+
+Scran provides an alternative to library-size scaling by estimating pooled size factors across similar spots, and it can be integrated into a Seurat workflow by creating a dedicated `Scran` assay.
+If you use this route, keep in mind which downstream steps are Seurat conventions (for example `ScaleData()`) versus core scran methodology.
