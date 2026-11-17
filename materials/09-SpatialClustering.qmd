@@ -260,10 +260,6 @@ BANKSY fragments this scattered cluster into more spatially unified domains.
 This shows how BANKSY emphasises tissue architecture.
 Even with a relatively modest lambda value of 0.2, spatial structure emerges clearly.
 
-We also see what might be some artefacts in the BANKSY clusters.
-For example, spots from the olfactory bulb (on the left) are placed in cluster 2, which might not be biologically correct.
-As always, knowledge of the biology would help interpret and judge the validity of these results.
-
 It is important to understand that BANKSY clusters are not "better" than non-spatial clusters, rather they answer different biological questions.
 Non-spatial clustering identifies **cell identities**: groups of cells with similar transcriptional profiles, regardless of location.
 The same cell type may appear in different tissue regions.
@@ -549,7 +545,7 @@ For identifying cell types that may be scattered across different regions, use a
 #| label: exercise2-header
 #| include: false
 
-#### Exercise 1 ####
+#### Exercise 2 ####
 ```
 
 ::: {.callout-exercise}
